@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: vpn_bot_db
+    environment:
+      POSTGRES_DB: vpn_bot
+      POSTGRES_USER: vpn_user
+      POSTGRES_PASSWORD: vpn_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vpn_user -d vpn_bot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching (optional but recommended)
+  redis:
+    image: redis:7-alpine
+    container_name: vpn_bot_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # VPN Bot Application
+  vpn_bot:
+    build: .
+    container_name: vpn_bot_app
+    environment:
+      # Database Configuration
+      DATABASE_URL: postgresql+asyncpg://vpn_user:vpn_password@postgres:5432/vpn_bot
+      
+      # Telegram Bot Configuration (set these in .env or environment)
+      BOT_TOKEN: ${BOT_TOKEN}
+      ADMIN_ID: ${ADMIN_ID}
+      SUPPORT_USERNAME: ${SUPPORT_USERNAME}
+      
+      # Marzban API Configuration
+      MARZBAN_URL: ${MARZBAN_URL}
+      MARZBAN_USERNAME: ${MARZBAN_USERNAME}
+      MARZBAN_PASSWORD: ${MARZBAN_PASSWORD}
+      
+      # CryptoBot Configuration
+      CRYPTOBOT_TOKEN: ${CRYPTOBOT_TOKEN}
+      CRYPTOBOT_PROVIDER_TOKEN: ${CRYPTOBOT_PROVIDER_TOKEN}
+      
+      # Payment Configuration
+      SUBSCRIPTION_PRICES: '{"1_month": 10.0, "3_months": 25.0, "6_months": 45.0, "1_year": 80.0}'
+      
+      # Notification Settings
+      EXPIRY_NOTIFICATION_DAYS: "3,1"
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "8080:8080"  # For webhooks if needed
+
+  # Nginx reverse proxy (optional)
+  nginx:
+    image: nginx:alpine
+    container_name: vpn_bot_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - vpn_bot
+    restart: unless-stopped
+    profiles:
+      - with-nginx
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: vpn_bot_network

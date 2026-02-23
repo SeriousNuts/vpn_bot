@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: vpn_bot_db_dev
+    environment:
+      POSTGRES_DB: vpn_bot_dev
+      POSTGRES_USER: vpn_user
+      POSTGRES_PASSWORD: vpn_password
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts
+    restart: unless-stopped
+    networks:
+      - vpn_bot_dev_network
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: vpn_bot_redis_dev
+    ports:
+      - "6380:6379"  # Different port to avoid conflicts
+    volumes:
+      - redis_dev_data:/data
+    restart: unless-stopped
+    networks:
+      - vpn_bot_dev_network
+
+  # VPN Bot Application
+  vpn_bot:
+    env_file:
+      - .env
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: vpn_bot_app_dev
+    volumes:
+      - .:/app  # Mount source code for development
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - vpn_bot_dev_network
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8080 --reload  # For development with auto-reload
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+
+networks:
+  vpn_bot_dev_network:
+    driver: bridge
