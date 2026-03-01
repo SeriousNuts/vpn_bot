@@ -4,15 +4,19 @@ VPN Bot - Main entry point
 """
 
 import asyncio
-import logging
+
 from src.bot import main
+from utils.logger import setup_logging
+
+
+
+async def run_async_tasks():
+    vpn_bot = asyncio.create_task(main())
+    await asyncio.gather(vpn_bot)
 
 if __name__ == "__main__":
     # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    setup_logging()
     
     # Run the bot
-    asyncio.run(main())
+    asyncio.run(run_async_tasks())

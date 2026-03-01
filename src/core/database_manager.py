@@ -76,7 +76,7 @@ class DatabaseManager:
             
             # Test connection
             async with self._engine.begin() as conn:
-                await conn.execute("SELECT 1")
+                await conn.execute(select(1))
             
             self._initialized = True
             logger.info("✅ Database manager initialized successfully")
@@ -344,17 +344,16 @@ class SubscriptionRepository:
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
     
-    async def create_subscription(self, user_id: int, plan_name: str, price: float,
-                                 duration_days: int, protocol: str) -> Subscription:
+    async def create_subscription(self, subscription: Subscription) -> Subscription:
         """Create new subscription"""
         return await self.db.create(
             Subscription,
-            user_id=user_id,
-            plan_name=plan_name,
-            price=price,
-            duration_days=duration_days,
-            protocol=protocol,
-            status="pending"
+            user_id=subscription.user_id,
+            plan_name=subscription.plan_name,
+            price=subscription.price,
+            duration_days=subscription.duration_days,
+            protocol=subscription.protocol,
+            status=subscription.status,
         )
     
     async def get_user_subscriptions(self, user_id: int, active_only: bool = False) -> List[Subscription]:
@@ -413,17 +412,20 @@ class PaymentRepository:
     
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
+
+    async def get_payment(self, payment_id: int) -> Payment:
+        """Get payment"""
+        return await self.db.get_by_id(Payment, payment_id)
     
-    async def create_payment(self, user_id: int, subscription_id: int,
-                           amount: float, payment_method: str) -> Payment:
+    async def create_payment(self, payment: Payment) -> Payment:
         """Create new payment"""
         return await self.db.create(
             Payment,
-            user_id=user_id,
-            subscription_id=subscription_id,
-            amount=amount,
-            payment_method=payment_method,
-            status="pending"
+            user_id=payment.user_id,
+            subscription_id=payment.subscription_id,
+            amount=payment.amount,
+            payment_method=payment.payment_method,
+            status=payment.status,
         )
     
     async def get_payment_by_invoice_id(self, invoice_id: str) -> Optional[Payment]:

@@ -36,8 +36,3 @@ def setup_logging():
     # Set specific logger levels
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
-    
-    return root_logger
-
-# Initialize logging
-logger = setup_logging()

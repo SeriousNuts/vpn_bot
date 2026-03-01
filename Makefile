@@ -1,18 +1,25 @@
-.PHONY: help build up down logs shell clean prod dev test
+.PHONY: help build up down logs shell clean prod dev test migrate setup migrate-prod migrate-down migration-current migration-history migration-new migration-autogenerate
 
 # Default target
 help:
 	@echo "Available commands:"
-	@echo "  build      - Build Docker images"
-	@echo "  up         - Start services"
-	@echo "  down       - Stop services"
-	@echo "  logs       - Show logs"
-	@echo "  shell      - Access bot shell"
-	@echo "  clean      - Clean up containers and volumes"
-	@echo "  prod       - Production deployment"
-	@echo "  dev        - Development deployment"
-	@echo "  test       - Run tests"
-	@echo "  setup      - Initial setup"
+	@echo "  build              - Build Docker images"
+	@echo "  up                 - Start services"
+	@echo "  down               - Stop services"
+	@echo "  logs               - Show logs"
+	@echo "  shell              - Access bot shell"
+	@echo "  clean              - Clean up containers and volumes"
+	@echo "  prod               - Production deployment"
+	@echo "  dev                - Development deployment"
+	@echo "  test               - Run tests"
+	@echo "  migrate            - Run database migrations"
+	@echo "  migrate-prod        - Run production migrations"
+	@echo "  migrate-down        - Downgrade migration (REVISION=<rev>)"
+	@echo "  migration-current   - Show current migration"
+	@echo "  migration-history   - Show migration history"
+	@echo "  migration-new       - Create new migration (MESSAGE=<msg>)"
+	@echo "  migration-autogenerate - Create autogenerate migration"
+	@echo "  setup              - Initial setup"
 
 # Development commands
 dev:
@@ -108,3 +115,45 @@ restore:
 	@echo "Restoring from backup..."
 	@read -p "Enter backup file: " backup_file; \
 	docker-compose exec -T postgres psql -U vpn_user vpn_bot < $$backup_file
+
+# Database migration
+migrate:
+	@echo "Running database migration..."
+	docker-compose -f docker-compose.dev.yml exec vpn_bot python scripts/alembic_manager.py upgrade
+
+migrate-prod:
+	@echo "Running production database migration..."
+	docker-compose exec vpn_bot python scripts/alembic_manager.py upgrade
+
+migrate-down:
+	@echo "Downgrading database migration..."
+	@if [ -z "$(REVISION)" ]; then \
+		echo "❌ REVISION environment variable required"; \
+		echo "Usage: make migrate-down REVISION=<revision>"; \
+		exit 1; \
+	fi
+	docker-compose -f docker-compose.dev.yml exec vpn_bot python scripts/alembic_manager.py downgrade $(REVISION)
+
+migration-current:
+	@echo "Showing current migration..."
+	docker-compose -f docker-compose.dev.yml exec vpn_bot python scripts/alembic_manager.py current
+
+migration-history:
+	@echo "Showing migration history..."
+	docker-compose -f docker-compose.dev.yml exec vpn_bot python scripts/alembic_manager.py history
+
+migration-new:
+	@echo "Creating new migration..."
+	@if [ -z "$(MESSAGE)" ]; then \
+		docker-compose -f docker-compose.dev.yml exec vpn_bot python scripts/alembic_manager.py revision; \
+	else \
+		docker-compose -f docker-compose.dev.yml exec vpn_bot python scripts/alembic_manager.py revision "$(MESSAGE)"; \
+	fi
+
+migration-autogenerate:
+	@echo "Creating autogenerate migration..."
+	@if [ -z "$(MESSAGE)" ]; then \
+		docker-compose -f docker-compose.dev.yml exec vpn_bot python scripts/alembic_manager.py autogenerate; \
+	else \
+		docker-compose -f docker-compose.dev.yml exec vpn_bot python scripts/alembic_manager.py autogenerate "$(MESSAGE)"; \
+	fi

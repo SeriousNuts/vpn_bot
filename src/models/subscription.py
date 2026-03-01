@@ -20,6 +20,7 @@ class Subscription(Base):
     expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    on_hold_timeout = Column(Integer)
     
     # Relationships
     user = relationship("User", back_populates="subscriptions")

@@ -91,7 +91,7 @@ python -c "from database import init_db; import asyncio; asyncio.run(init_db())"
 
 5. **Run the bot**
 ```bash
-python bot.py
+python main.py
 ```
 
 ## Configuration

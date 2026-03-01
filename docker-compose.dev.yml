@@ -9,8 +9,19 @@ services:
       POSTGRES_DB: vpn_bot_dev
       POSTGRES_USER: vpn_user
       POSTGRES_PASSWORD: vpn_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    command: |
+      postgres 
+      -c listen_addresses='*' 
+      -c password_encryption=md5
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c ssl=off
+
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
+      - ./pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
       - "5433:5432"  # Different port to avoid conflicts
     restart: unless-stopped
@@ -46,7 +57,9 @@ services:
     restart: unless-stopped
     networks:
       - vpn_bot_dev_network
-    command: python -m uvicorn main:app --host 0.0.0.0 --port 8080 --reload  # For development with auto-reload
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    #command: python -m uvicorn main:app --host 0.0.0.0 --port 8080 --reload  # For development with auto-reload
 
 volumes:
   postgres_dev_data:

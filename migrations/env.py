@@ -2,6 +2,7 @@
 Alembic environment configuration for VPN Bot
 """
 
+import asyncio
 from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
@@ -14,7 +15,6 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from src.core.config import settings
-from src.models.base import Base
 from src.models import *  # Import all models
 
 # this is the Alembic Config object, which provides
@@ -22,7 +22,7 @@ from src.models import *  # Import all models
 config = context.config
 
 # Override sqlalchemy.url with our settings
-config.set_main_option("sqlalchemy.url", settings.database_url)
+#config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -90,7 +90,6 @@ async def run_async_migrations() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-
     asyncio.run(run_async_migrations())
 
 

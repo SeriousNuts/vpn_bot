@@ -1,91 +1,42 @@
-import httpx
-import base64
 import secrets
-from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
-from src.core.config import settings
-from src.models import User, Subscription
-from src.enums import ProtocolType
+from typing import Dict, Any, Optional, List
 
-class MarzbanAPI:
+import httpx
+
+from src.core.config import settings
+from src.enums import ProtocolType
+from src.models import User, Subscription
+from marzban import MarzbanAPI, UserCreate, ProxySettings
+
+
+class MarzbanAPISerivce:
     def __init__(self):
         self.base_url = settings.marzban_url.rstrip('/')
         self.username = settings.marzban_username
         self.password = settings.marzban_password
         self.token = None
+        self.api = None
     
     async def login(self) -> bool:
         """Authenticate with Marzban API"""
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.post(
-                    f"{self.base_url}/api/admin/token",
-                    data={"username": self.username, "password": self.password}
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    self.token = data.get("access_token")
-                    return True
-                else:
-                    print(f"Login failed: {response.status_code} - {response.text}")
-                    return False
-            except Exception as e:
-                print(f"Login error: {e}")
-                return False
+        self.api = MarzbanAPI(base_url=self.base_url)
+        self.token = await self.api.get_token(username=self.username, password=self.password)
     
     def get_headers(self) -> Dict[str, str]:
         """Get authorization headers"""
         return {"Authorization": f"Bearer {self.token}"}
     
-    async def create_user(self, user: User, subscription: Subscription) -> Optional[Dict[str, Any]]:
+    async def create_user(self, user: User, subscription: Subscription) -> UserCreate:
         """Create a new user in Marzban"""
-        if not self.token:
+
+        if not self.token or not self.api:
             if not await self.login():
                 return None
-        
-        # Generate username and password
-        username = f"tg_{user.telegram_id}"
-        password = secrets.token_urlsafe(12)
-        
-        # Calculate expiry date
-        expiry_date = datetime.now() + timedelta(days=subscription.duration_days)
-        
-        # Create user data
-        user_data = {
-            "username": username,
-            "password": password,
-            "proxies": {
-                subscription.protocol: self.get_proxy_config(subscription.protocol)
-            },
-            "data_limit": 0,  # 0 means unlimited
-            "data_limit_reset_strategy": "no_reset",
-            "status": "active",
-            "expire": int(expiry_date.timestamp()),
-            "on_hold_expire_duration": 0,
-            "on_hold_timeout": "12m"
-        }
-        
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.post(
-                    f"{self.base_url}/api/user",
-                    json=user_data,
-                    headers=self.get_headers()
-                )
-                
-                if response.status_code == 200:
-                    # Update user with Marzban credentials
-                    user.marzban_username = username
-                    user.marzban_password = password
-                    
-                    return response.json()
-                else:
-                    print(f"Failed to create user: {response.status_code} - {response.text}")
-                    return None
-                    
-            except Exception as e:
-                print(f"Create user error: {e}")
-                return None
+        new_user = UserCreate(username=str(user.telegram_id),
+                              proxies={subscription.protocol: ProxySettings(flow="xtls-rprx-vision")})
+        added_user = await self.api.add_user(new_user, token=self.token.access_token)
+        return added_user
     
     async def get_user(self, username: str) -> Optional[Dict[str, Any]]:
         """Get user information from Marzban"""
@@ -285,4 +236,4 @@ class MarzbanAPI:
         return configs.get(protocol, configs[ProtocolType.VLESS])
 
 # Global instance
-marzban_api = MarzbanAPI()
+marzban_api = MarzbanAPISerivce()
