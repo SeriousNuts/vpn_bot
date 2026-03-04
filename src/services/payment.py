@@ -10,6 +10,7 @@ from src.enums import PaymentStatus
 from src.enums import SubscriptionStatus
 from src.models import Payment
 from src.services.marzban import marzban_service
+from utils.format_error import format_error_traceback
 
 
 class CryptoBotAPI:
@@ -28,7 +29,7 @@ class CryptoBotAPI:
                 print(response.json())
                 return response.json()
             except Exception as e:
-                print(f"Failed to get me: {e}")
+                print(f"Failed to get me: {format_error_traceback(e)}")
                 return None
 
     async def create_invoice(
@@ -69,7 +70,7 @@ class CryptoBotAPI:
                     return None
                     
             except Exception as e:
-                print(f"Create invoice error: {e}")
+                print(f"Create invoice error: {format_error_traceback(e)}")
                 return None
     
     async def create_payment_usdt(
@@ -108,7 +109,7 @@ class CryptoBotAPI:
                     print(f"Failed to create USDT invoice: {response.status_code} - {response.text}")
                     return None
             except Exception as e:
-                print(f"Error creating USDT invoice: {e}")
+                print(f"Error creating USDT invoice: {format_error_traceback(e)}")
                 return None
 
     async def create_payment_ton(
@@ -209,7 +210,7 @@ class CryptoBotAPI:
                     return None
                     
             except Exception as e:
-                print(f"Get invoice error: {e}")
+                print(f"Get invoice error: {format_error_traceback(e)}")
                 return None
     
     async def verify_payment(self, invoice_data: Dict[str, Any]) -> bool:
@@ -241,7 +242,7 @@ class CryptoBotAPI:
                     return None
                     
             except Exception as e:
-                print(f"Get balance error: {e}")
+                print(f"Get balance error: {format_error_traceback(e)}")
                 return None
     
     async def get_exchange_rates(self) -> Optional[Dict[str, Any]]:
@@ -260,7 +261,7 @@ class CryptoBotAPI:
                     return None
                     
             except Exception as e:
-                print(f"Get exchange rates error: {e}")
+                print(f"Get exchange rates error: {format_error_traceback(e)}")
                 return None
 
 class PaymentProcessor:
@@ -413,7 +414,7 @@ class PaymentProcessor:
                     return True
                 
         except Exception as e:
-            print(f"Process webhook error: {e}")
+            print(f"Process webhook error: {format_error_traceback(e)}")
             return False
         
         return False

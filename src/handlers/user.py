@@ -136,7 +136,7 @@ async def cmd_start(message: Message, state: FSMContext):
                 await message.answer(f"👋 С возвращением!", reply_markup=keyboard)
                 
     except Exception as e:
-        logger.error(f"Error in cmd_start: {e}")
+        logger.error(f"Error in cmd_start: {format_error_traceback(e)}")
         await message.answer("❌ Произошла ошибка. Попробуйте позже.")
 
 @user_router.message(F.text == "💰 Купить подписку")
@@ -388,7 +388,7 @@ async def process_payment_cryptobot_ton(callback: CallbackQuery, state: FSMConte
             )
             
     except Exception as e:
-        print(f"Exception during TON payment creation: {e}")
+        print(f"Exception during TON payment creation: {format_error_traceback(e)}")
         await callback.message.edit_text(
             "❌ Произошла ошибка при создании платежа. Попробуйте позже.",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
@@ -464,7 +464,7 @@ async def check_payment_status(callback: CallbackQuery):
                 await callback.answer("❌ Неизвестный метод оплаты", show_alert=True)
                 
     except Exception as e:
-        logger.error(f"❌ Ошибка при проверке платежа {payment_id}: {e}")
+        logger.error(f"❌ Ошибка при проверке платежа {payment_id}: {format_error_traceback(e)}")
         await callback.answer("❌ Ошибка при проверке платежа", show_alert=True)
 
 async def activate_subscription_after_payment(payment) -> bool:
@@ -550,7 +550,7 @@ async def my_subscription(message: Message):
         await message.answer(subscription_text)
         
     except Exception as e:
-        logger.error(f"Error in my_subscription: {e}")
+        logger.error(f"Error in my_subscription: {format_error_traceback(e)}")
         await message.answer("❌ Не удалось загрузить информацию о подписке.")
 
 @user_router.message(F.text == "🆘 Поддержка")
@@ -589,7 +589,7 @@ async def process_support_message(message: Message, state: FSMContext):
         await bot.send_message(settings.admin_id, support_text, parse_mode="Markdown")
         await message.answer("✅ Your message has been sent to our support team. We'll respond shortly.")
     except Exception as e:
-        print(f"Failed to forward support message: {e}")
+        print(f"Failed to forward support message: {format_error_traceback(e)}")
         await message.answer("❌ Failed to send message. Please try again later.")
     
     await state.clear()

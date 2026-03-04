@@ -17,6 +17,7 @@ from src.enums import SubscriptionStatus
 from src.services.marzban import marzban_service
 from src.services.notification import NotificationService
 from src.handlers.payment_integration import update_main_keyboard_with_payments
+from utils.format_error import format_error_traceback
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +114,7 @@ async def cmd_start(message: Message):
         )
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в команде /start: {e}")
+        logger.error(f"❌ Ошибка в команде /start: {format_error_traceback(e)}")
         await message.answer(
             "❌ Произошла ошибка. Пожалуйста, попробуйте позже.",
             parse_mode=ParseMode.HTML
@@ -136,7 +137,7 @@ async def cmd_main_menu(message: Message):
         )
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в главном меню: {e}")
+        logger.error(f"❌ Ошибка в главном меню: {format_error_traceback(e)}")
         await message.answer(
             "❌ Произошла ошибка. Попробуйте позже.",
             parse_mode=ParseMode.HTML
@@ -153,7 +154,7 @@ async def cmd_buy_subscription(message: Message):
         await cmd_buy_stars(message)
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в покупке подписки: {e}")
+        logger.error(f"❌ Ошибка в покупке подписки: {format_error_traceback(e)}")
         await message.answer(
             "❌ Произошла ошибка. Попробуйте позже.",
             parse_mode=ParseMode.HTML
@@ -170,7 +171,7 @@ async def cmd_payment_history(message: Message):
         await cmd_payment_history(message)
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в истории платежей: {e}")
+        logger.error(f"❌ Ошибка в истории платежей: {format_error_traceback(e)}")
         await message.answer(
             "❌ Произошла ошибка. Попробуйте позже.",
             parse_mode=ParseMode.HTML
@@ -263,7 +264,7 @@ async def cmd_my_subscription(message: Message):
         )
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в моей подписке: {e}")
+        logger.error(f"❌ Ошибка в моей подписке: {format_error_traceback(e)}")
         await message.answer(
             "❌ Произошла ошибка при загрузке подписки.",
             parse_mode=ParseMode.HTML
@@ -344,7 +345,7 @@ async def cmd_statistics(message: Message):
         )
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в статистике: {e}")
+        logger.error(f"❌ Ошибка в статистике: {format_error_traceback(e)}")
         await message.answer(
             "❌ Произошла ошибка при загрузке статистики.",
             parse_mode=ParseMode.HTML
@@ -381,7 +382,7 @@ async def cmd_support(message: Message):
         )
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в поддержке: {e}")
+        logger.error(f"❌ Ошибка в поддержке: {format_error_traceback(e)}")
         await message.answer(
             "❌ Произошла ошибка. Попробуйте позже.",
             parse_mode=ParseMode.HTML
@@ -419,7 +420,7 @@ async def cmd_settings(message: Message):
         )
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в настройках: {e}")
+        logger.error(f"❌ Ошибка в настройках: {format_error_traceback(e)}")
         await message.answer(
             "❌ Произошла ошибка. Попробуйте позже.",
             parse_mode=ParseMode.HTML
@@ -436,7 +437,7 @@ async def callback_my_subscription(callback: CallbackQuery):
         await cmd_my_subscription(callback.message)
         await callback.answer()
     except Exception as e:
-        logger.error(f"❌ Ошибка в callback my_subscription: {e}")
+        logger.error(f"❌ Ошибка в callback my_subscription: {format_error_traceback(e)}")
         await callback.answer("❌ Произошла ошибка", show_alert=True)
 
 
@@ -450,7 +451,7 @@ async def callback_payment_history(callback: CallbackQuery):
         await cmd_payment_history(callback.message)
         await callback.answer()
     except Exception as e:
-        logger.error(f"❌ Ошибка в callback payment_history: {e}")
+        logger.error(f"❌ Ошибка в callback payment_history: {format_error_traceback(e)}")
         await callback.answer("❌ Произошла ошибка", show_alert=True)
 
 
@@ -463,7 +464,7 @@ async def callback_support(callback: CallbackQuery):
         await cmd_support(callback.message)
         await callback.answer()
     except Exception as e:
-        logger.error(f"❌ Ошибка в callback support: {e}")
+        logger.error(f"❌ Ошибка в callback support: {format_error_traceback(e)}")
         await callback.answer("❌ Произошла ошибка", show_alert=True)
 
 
@@ -484,7 +485,7 @@ async def callback_show_main_menu(callback: CallbackQuery):
         
         await callback.answer()
     except Exception as e:
-        logger.error(f"❌ Ошибка показа главного меню: {e}")
+        logger.error(f"❌ Ошибка показа главного меню: {format_error_traceback(e)}")
         await callback.answer("❌ Произошла ошибка", show_alert=True)
 
 
@@ -505,5 +506,5 @@ async def callback_back_to_main(callback: CallbackQuery):
         
         await callback.answer()
     except Exception as e:
-        logger.error(f"❌ Ошибка возврата в главное меню: {e}")
+        logger.error(f"❌ Ошибка возврата в главное меню: {format_error_traceback(e)}")
         await callback.answer("❌ Произошла ошибка", show_alert=True)

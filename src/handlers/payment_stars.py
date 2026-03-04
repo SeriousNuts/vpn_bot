@@ -55,7 +55,7 @@ async def process_stars_payment(callback: CallbackQuery, payment, plan_display_n
             )
             
     except Exception as e:
-        logger.error(f"❌ Ошибка создания платежа через Stars: {e}")
+        logger.error(f"❌ Ошибка создания платежа через Stars: {format_error_traceback(e)}")
         await callback.message.edit_text(
             "❌ Произошла ошибка при создании платежа. Попробуйте позже."
         )
@@ -83,7 +83,7 @@ async def check_stars_payment_status(callback: CallbackQuery):
         )
         
     except Exception as e:
-        logger.error(f"❌ Ошибка проверки оплаты Stars: {e}")
+        logger.error(f"❌ Ошибка проверки оплаты Stars: {format_error_traceback(e)}")
         await callback.answer("❌ Произошла ошибка при проверке оплаты", show_alert=True)
 
 @payment_stars_router.message(Command("buy_stars"))
@@ -130,7 +130,7 @@ async def cmd_buy_stars(message: Message):
         )
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в команде /buy_stars: {e}")
+        logger.error(f"❌ Ошибка в команде /buy_stars: {format_error_traceback(e)}")
         await message.answer(
             "❌ Произошла ошибка. Пожалуйста, попробуйте позже.",
             parse_mode=ParseMode.HTML
@@ -168,7 +168,7 @@ async def callback_buy_plan(callback: CallbackQuery):
         await callback.answer()
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в callback buy_plan: {e}")
+        logger.error(f"❌ Ошибка в callback buy_plan: {format_error_traceback(e)}")
         await callback.answer(
             "❌ Произошла ошибка. Попробуйте позже.",
             show_alert=True
@@ -193,7 +193,7 @@ async def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
             )
             
     except Exception as e:
-        logger.error(f"❌ Ошибка обработки pre-checkout: {e}")
+        logger.error(f"❌ Ошибка обработки pre-checkout: {format_error_traceback(e)}")
         await pre_checkout_query.answer(
             ok=False,
             error_message="❌ Произошла ошибка. Попробуйте позже."
@@ -230,7 +230,7 @@ async def process_successful_payment(message: Message):
             )
             
     except Exception as e:
-        logger.error(f"❌ Ошибка обработки успешного платежа: {e}")
+        logger.error(f"❌ Ошибка обработки успешного платежа: {format_error_traceback(e)}")
         await message.answer(
             "❌ Произошла ошибка. Пожалуйста, свяжитесь с поддержкой.",
             parse_mode=ParseMode.HTML
@@ -288,7 +288,7 @@ async def cmd_payment_history(message: Message):
         )
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в команде /payment_history: {e}")
+        logger.error(f"❌ Ошибка в команде /payment_history: {format_error_traceback(e)}")
         await message.answer(
             "❌ Произошла ошибка при загрузке истории платежей.",
             parse_mode=ParseMode.HTML
@@ -341,7 +341,7 @@ async def callback_refresh_payment_history(callback: CallbackQuery):
         await callback.answer("🔄 История платежей обновлена")
         
     except Exception as e:
-        logger.error(f"❌ Ошибка обновления истории платежей: {e}")
+        logger.error(f"❌ Ошибка обновления истории платежей: {format_error_traceback(e)}")
         await callback.answer(
             "❌ Произошла ошибка при обновлении.",
             show_alert=True
@@ -368,7 +368,7 @@ async def callback_back_to_main(callback: CallbackQuery):
         await callback.answer()
         
     except Exception as e:
-        logger.error(f"❌ Ошибка возврата в главное меню: {e}")
+        logger.error(f"❌ Ошибка возврата в главное меню: {format_error_traceback(e)}")
         await callback.answer(
             "❌ Произошла ошибка.",
             show_alert=True
@@ -414,7 +414,7 @@ async def cmd_stars_info(message: Message):
         )
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в команде /stars_info: {e}")
+        logger.error(f"❌ Ошибка в команде /stars_info: {format_error_traceback(e)}")
         await message.answer(
             "❌ Произошла ошибка. Попробуйте позже.",
             parse_mode=ParseMode.HTML

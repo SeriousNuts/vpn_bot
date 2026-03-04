@@ -23,6 +23,7 @@ from sqlalchemy.sql.expression import func
 from src.core.config import settings
 from src.models import User, Subscription, Payment, NotificationLog
 from src.models.base import Base
+from utils.format_error import format_error_traceback
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,7 @@ class DatabaseManager:
             logger.info("✅ Database manager initialized successfully")
             
         except Exception as e:
-            logger.error(f"❌ Failed to initialize database manager: {e}")
+            logger.error(f"❌ Failed to initialize database manager: {format_error_traceback(e)}")
             raise
     
     async def close(self) -> None:
@@ -109,17 +110,17 @@ class DatabaseManager:
                         break
                     except (DisconnectionError, OperationalError, InterfaceError) as e:
                         await session.rollback()
-                        logger.warning(f"Connection error (attempt {attempt + 1}): {e}")
+                        logger.warning(f"Connection error (attempt {attempt + 1}): {format_error_traceback(e)}")
                         if attempt == self._connection_retries - 1:
                             raise
                         await asyncio.sleep(self._retry_delay * (2 ** attempt))
                     except Exception as e:
                         await session.rollback()
-                        logger.error(f"Transaction failed: {e}")
+                        logger.error(f"Transaction failed: {format_error_traceback(e)}")
                         raise
             except Exception as e:
                 if attempt == self._connection_retries - 1:
-                    logger.error(f"Failed to get database session after {self._connection_retries} attempts: {e}")
+                    logger.error(f"Failed to get database session after {self._connection_retries} attempts: {format_error_traceback(e)}")
                     raise
                 await asyncio.sleep(self._retry_delay * (2 ** attempt))
     
@@ -133,7 +134,7 @@ class DatabaseManager:
                 try:
                     return await func_to_call(session, *args, **kwargs)
                 except Exception as e:
-                    logger.error(f"Atomic transaction failed in {func_to_call.__name__}: {e}")
+                    logger.error(f"Atomic transaction failed in {func_to_call.__name__}: {format_error_traceback(e)}")
                     raise
         return wrapper
     
@@ -149,7 +150,7 @@ class DatabaseManager:
                 logger.debug(f"Created {model.__name__}: {instance.id}")
                 return instance
             except Exception as e:
-                logger.error(f"Failed to create {model.__name__}: {e}")
+                logger.error(f"Failed to create {model.__name__}: {format_error_traceback(e)}")
                 raise
     
     async def get_by_id(self, model: Type[T], id: int) -> Optional[T]:
@@ -159,7 +160,7 @@ class DatabaseManager:
                 result = await session.execute(select(model).where(model.id == id))
                 return result.scalar_one_or_none()
             except Exception as e:
-                logger.error(f"Failed to get {model.__name__} by ID {id}: {e}")
+                logger.error(f"Failed to get {model.__name__} by ID {id}: {format_error_traceback(e)}")
                 raise
     
     async def get_by_field(self, model: Type[T], field: str, value: Any) -> Optional[T]:
@@ -169,7 +170,7 @@ class DatabaseManager:
                 result = await session.execute(select(model).where(getattr(model, field) == value))
                 return result.scalar_one_or_none()
             except Exception as e:
-                logger.error(f"Failed to get {model.__name__} by {field}={value}: {e}")
+                logger.error(f"Failed to get {model.__name__} by {field}={value}: {format_error_traceback(e)}")
                 raise
     
     async def get_all(self, model: Type[T], 
@@ -201,7 +202,7 @@ class DatabaseManager:
                 result = await session.execute(query)
                 return result.scalars().all()
             except Exception as e:
-                logger.error(f"Failed to get all {model.__name__}: {e}")
+                logger.error(f"Failed to get all {model.__name__}: {format_error_traceback(e)}")
                 raise
     
     async def update(self, model: Type[T], 
@@ -218,7 +219,7 @@ class DatabaseManager:
                     logger.debug(f"Updated {model.__name__} {id}")
                 return instance
             except Exception as e:
-                logger.error(f"Failed to update {model.__name__} {id}: {e}")
+                logger.error(f"Failed to update {model.__name__} {id}: {format_error_traceback(e)}")
                 raise
     
     async def update_by_field(self, model: Type[T],
@@ -233,7 +234,7 @@ class DatabaseManager:
                 logger.debug(f"Updated {len(instances)} {model.__name__} records by {field}={value}")
                 return instances
             except Exception as e:
-                logger.error(f"Failed to update {model.__name__} by {field}={value}: {e}")
+                logger.error(f"Failed to update {model.__name__} by {field}={value}: {format_error_traceback(e)}")
                 raise
     
     async def delete(self, model: Type[T], id: int) -> bool:
@@ -246,7 +247,7 @@ class DatabaseManager:
                     logger.debug(f"Deleted {model.__name__} {id}")
                 return deleted
             except Exception as e:
-                logger.error(f"Failed to delete {model.__name__} {id}: {e}")
+                logger.error(f"Failed to delete {model.__name__} {id}: {format_error_traceback(e)}")
                 raise
     
     async def delete_by_field(self, model: Type[T],
@@ -259,7 +260,7 @@ class DatabaseManager:
                 logger.debug(f"Deleted {deleted_count} {model.__name__} records by {field}={value}")
                 return deleted_count
             except Exception as e:
-                logger.error(f"Failed to delete {model.__name__} by {field}={value}: {e}")
+                logger.error(f"Failed to delete {model.__name__} by {field}={value}: {format_error_traceback(e)}")
                 raise
     
     async def count(self, model: Type[T],
@@ -277,7 +278,7 @@ class DatabaseManager:
                 result = await session.execute(query)
                 return result.scalar()
             except Exception as e:
-                logger.error(f"Failed to count {model.__name__}: {e}")
+                logger.error(f"Failed to count {model.__name__}: {format_error_traceback(e)}")
                 raise
     
     async def exists(self, model: Type[T],
@@ -290,7 +291,7 @@ class DatabaseManager:
                 )
                 return result.scalar() > 0
             except Exception as e:
-                logger.error(f"Failed to check existence of {model.__name__} by {field}={value}: {e}")
+                logger.error(f"Failed to check existence of {model.__name__} by {field}={value}: {format_error_traceback(e)}")
                 raise
 
 # User-specific operations
@@ -327,7 +328,7 @@ class UserRepository:
                 )
                 return result.scalar_one_or_none()
             except Exception as e:
-                logger.error(f"Failed to get user with subscriptions: {e}")
+                logger.error(f"Failed to get user with subscriptions: {format_error_traceback(e)}")
                 raise
     
     async def update_user_status(self, telegram_id: int, status: str) -> bool:
@@ -377,7 +378,7 @@ class SubscriptionRepository:
                 )
                 return result.scalar_one_or_none()
             except Exception as e:
-                logger.error(f"Failed to get active subscription: {e}")
+                logger.error(f"Failed to get active subscription: {format_error_traceback(e)}")
                 raise
     
     async def update_subscription_status(self, subscription_id: int, status: str) -> bool:
@@ -403,7 +404,7 @@ class SubscriptionRepository:
                 )
                 return result.scalars().all()
             except Exception as e:
-                logger.error(f"Failed to get expiring subscriptions: {e}")
+                logger.error(f"Failed to get expiring subscriptions: {format_error_traceback(e)}")
                 raise
 
 # Payment-specific operations

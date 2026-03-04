@@ -4,6 +4,8 @@ from typing import Dict, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
+from utils.format_error import format_error_traceback
+
 
 class Settings(BaseSettings):
     # Telegram Bot Configuration
@@ -85,7 +87,7 @@ class Settings(BaseSettings):
             try:
                 return [int(x.strip()) for x in v.split(',') if x.strip()]
             except ValueError as e:
-                raise ValueError(f"Не удалось преобразовать '{v}' в список чисел: {e}")
+                raise ValueError(f"Не удалось преобразовать '{v}' в список чисел: {format_error_traceback(e)}")
         return v
 
     @classmethod
@@ -112,7 +114,7 @@ class Settings(BaseSettings):
                         result[key.strip()] = float(value.strip())
                     return result
                 except Exception as e:
-                    raise ValueError(f"Не удалось преобразовать '{v}' в словарь цен: {e}")
+                    raise ValueError(f"Не удалось преобразовать '{v}' в словарь цен: {format_error_traceback(e)}")
         return v
 
     @classmethod

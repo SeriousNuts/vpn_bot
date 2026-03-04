@@ -21,6 +21,7 @@ from marzban import (
 from src.core.config import settings
 from src.enums import ProtocolType
 from src.models import User, Subscription
+from utils.format_error import format_error_traceback
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ class MarzbanService:
                 return False
                 
         except Exception as e:
-            logger.error(f"❌ Ошибка инициализации Marzban API: {e}")
+            logger.error(f"❌ Ошибка инициализации Marzban API: {format_error_traceback(e)}")
             return False
     
     async def close(self) -> None:
@@ -131,7 +132,7 @@ class MarzbanService:
                 logger.error(f"❌ Ошибка HTTP при создании пользователя: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
-            logger.error(f"❌ Ошибка создания пользователя в Marzban: {e}")
+            logger.error(f"❌ Ошибка создания пользователя в Marzban: {format_error_traceback(e)}")
             return None
     
     async def get_user(self, username: str) -> UserResponse | None:
@@ -213,7 +214,7 @@ class MarzbanService:
                 logger.error(f"❌ Ошибка HTTP при изменении пользователя {username}: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
-            logger.error(f"❌ Ошибка изменения пользователя {username}: {e}")
+            logger.error(f"❌ Ошибка изменения пользователя {username}: {format_error_traceback(e)}")
             return None
     
     async def remove_user(self, username: str) -> bool:
@@ -245,7 +246,7 @@ class MarzbanService:
                 logger.error(f"❌ Ошибка HTTP при удалении пользователя {username}: {e.response.status_code} - {e.response.text}")
             return False
         except Exception as e:
-            logger.error(f"❌ Ошибка удаления пользователя {username}: {e}")
+            logger.error(f"❌ Ошибка удаления пользователя {username}: {format_error_traceback(e)}")
             return False
     
     async def extend_subscription(self, username: str, days: int) -> bool:
@@ -274,7 +275,7 @@ class MarzbanService:
             return result is not None
             
         except Exception as e:
-            logger.error(f"❌ Ошибка продления подписки пользователя {username}: {e}")
+            logger.error(f"❌ Ошибка продления подписки пользователя {username}: {format_error_traceback(e)}")
             return False
     
     async def change_user_status(self, username: str, status: str) -> bool:
@@ -315,7 +316,7 @@ class MarzbanService:
                 logger.error(f"❌ Ошибка HTTP при получении статистики: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
-            logger.error(f"❌ Ошибка получения системной статистики: {e}")
+            logger.error(f"❌ Ошибка получения системной статистики: {format_error_traceback(e)}")
             return None
     
     async def get_all_users(self, offset: int = 0, limit: int = 100) -> UsersResponse | None:
@@ -347,7 +348,7 @@ class MarzbanService:
                 logger.error(f"❌ Ошибка HTTP при получении списка пользователей: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
-            logger.error(f"❌ Ошибка получения списка пользователей: {e}")
+            logger.error(f"❌ Ошибка получения списка пользователей: {format_error_traceback(e)}")
             return None
     
     async def get_user_usage(self, username: str, start_date: str, end_date: str) -> Optional[Dict[str, Any]]:
@@ -386,7 +387,7 @@ class MarzbanService:
                 logger.error(f"❌ Ошибка HTTP при получении статистики пользователя {username}: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
-            logger.error(f"❌ Ошибка получения статистики использования пользователя {username}: {e}")
+            logger.error(f"❌ Ошибка получения статистики использования пользователя {username}: {format_error_traceback(e)}")
             return None
     
     async def reset_user_usage(self, username: str) -> bool:
@@ -418,7 +419,7 @@ class MarzbanService:
                 logger.error(f"❌ Ошибка HTTP при сбросе статистики пользователя {username}: {e.response.status_code} - {e.response.text}")
             return False
         except Exception as e:
-            logger.error(f"❌ Ошибка сброса статистики пользователя {username}: {e}")
+            logger.error(f"❌ Ошибка сброса статистики пользователя {username}: {format_error_traceback(e)}")
             return False
     
     async def get_user_subscription_info(self, username: str) -> SubscriptionUserResponse | None:
@@ -459,7 +460,7 @@ class MarzbanService:
                 logger.error(f"❌ Ошибка HTTP при получении подписки пользователя {username}: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
-            logger.error(f"❌ Ошибка получения информации о подписке пользователя {username}: {e}")
+            logger.error(f"❌ Ошибка получения информации о подписке пользователя {username}: {format_error_traceback(e)}")
             return None
     
     def _get_proxy_config(self, protocol: str) -> ProxySettings:
@@ -495,7 +496,7 @@ class MarzbanService:
             stats = await self.get_system_stats()
             return stats is not None
         except Exception as e:
-            logger.error(f"❌ Ошибка проверки здоровья API: {e}")
+            logger.error(f"❌ Ошибка проверки здоровья API: {format_error_traceback(e)}")
             return False
 
 

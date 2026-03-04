@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from src.core.database import subscription_repo, notification_repo
 from src.models import Subscription
 from src.services.marzban import marzban_service
+from utils.format_error import format_error_traceback
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ class NotificationService:
             self.scheduler.start()
             logger.info("Сервис уведомлений запущен")
         except Exception as e:
-            logger.error(f"Не удалось запустить сервис уведомлений: {e}")
+            logger.error(f"Не удалось запустить сервис уведомлений: {format_error_traceback(e)}")
             raise
     
     async def stop(self):
@@ -57,7 +58,7 @@ class NotificationService:
             self.scheduler.shutdown()
             logger.info("Сервис уведомлений остановлен")
         except Exception as e:
-            logger.error(f"Не удалось остановить сервис уведомлений: {e}")
+            logger.error(f"Не удалось остановить сервис уведомлений: {format_error_traceback(e)}")
     
     async def send_payment_confirmation(self, user_id: int, subscription: Subscription):
         """Отправить подтверждение платежа"""
@@ -85,7 +86,7 @@ class NotificationService:
             )
             
         except Exception as e:
-            logger.error(f"Не удалось отправить подтверждение платежа пользователю {user_id}: {e}")
+            logger.error(f"Не удалось отправить подтверждение платежа пользователю {user_id}: {format_error_traceback(e)}")
             # Логирование неудачного уведомления
             await notification_repo.create_notification(
                 user_id=user_id,
@@ -122,7 +123,7 @@ class NotificationService:
             )
             
         except Exception as e:
-            logger.error(f"Не удалось отправить приветственное сообщение пользователю {user_id}: {e}")
+            logger.error(f"Не удалось отправить приветственное сообщение пользователю {user_id}: {format_error_traceback(e)}")
             # Логирование неудачного уведомления
             await notification_repo.create_notification(
                 user_id=user_id,
@@ -167,7 +168,7 @@ class NotificationService:
             )
             
         except Exception as e:
-            logger.error(f"Не удалось отправить уведомление об истечении пользователю {user_id}: {e}")
+            logger.error(f"Не удалось отправить уведомление об истечении пользователю {user_id}: {format_error_traceback(e)}")
             # Логирование неудачного уведомления
             await notification_repo.create_notification(
                 user_id=user_id,
@@ -197,7 +198,7 @@ class NotificationService:
                     logger.info(f"Отправлено уведомление об истечении для пользователя {subscription.user_id}")
             
         except Exception as e:
-            logger.error(f"Ошибка проверки истекающих подписок: {e}")
+            logger.error(f"Ошибка проверки истекающих подписок: {format_error_traceback(e)}")
     
     async def check_expired_subscriptions(self):
         """Проверить истекшие подписки"""
@@ -223,7 +224,7 @@ class NotificationService:
                     logger.info(f"Деактивирована истекшая подписка для пользователя {subscription.user_id}")
             
         except Exception as e:
-            logger.error(f"Ошибка проверки истекших подписок: {e}")
+            logger.error(f"Ошибка проверки истекших подписок: {format_error_traceback(e)}")
     
     async def deactivate_subscription(self, subscription: Subscription):
         """Деактивировать истекшую подписку"""
@@ -239,7 +240,7 @@ class NotificationService:
                 try:
                     await marzban_service.change_user_status(username=subscription.user.username, status="Disabled")
                 except Exception as e:
-                    logger.warning(f"Не удалось деактивировать пользователя Marzban {subscription.marzban_username}: {e}")
+                    logger.warning(f"Не удалось деактивировать пользователя Marzban {subscription.marzban_username}: {format_error_traceback(e)}")
             
             # Отправить уведомление пользователю
             from src.bot import get_bot
@@ -263,7 +264,7 @@ class NotificationService:
             )
             
         except Exception as e:
-            logger.error(f"Ошибка деактивации подписки {subscription.id}: {e}")
+            logger.error(f"Ошибка деактивации подписки {subscription.id}: {format_error_traceback(e)}")
             # Логирование неудачного уведомления
             await notification_repo.create_notification(
                 user_id=subscription.user_id,

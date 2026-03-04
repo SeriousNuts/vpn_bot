@@ -14,6 +14,7 @@ from src.core.database import payment_repo, subscription_repo, user_repo
 from src.models import Payment, User, Subscription
 from src.enums import PaymentStatus, SubscriptionStatus
 from src.services.notification import NotificationService
+from utils.format_error import format_error_traceback
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +122,7 @@ class TelegramStarsPaymentService:
             }
             
         except Exception as e:
-            logger.error(f"❌ Ошибка создания инвойса для звёзд: {e}")
+            logger.error(f"❌ Ошибка создания инвойса для звёзд: {format_error_traceback(e)}")
             return None
     
     async def process_pre_checkout_query(self, pre_checkout_query: PreCheckoutQuery) -> bool:
@@ -167,7 +168,7 @@ class TelegramStarsPaymentService:
             return True
             
         except Exception as e:
-            logger.error(f"❌ Ошибка обработки pre-checkout: {e}")
+            logger.error(f"❌ Ошибка обработки pre-checkout: {format_error_traceback(e)}")
             return False
     
     async def process_successful_payment(self, successful_payment: SuccessfulPayment) -> bool:
@@ -220,7 +221,7 @@ class TelegramStarsPaymentService:
                 return False
                 
         except Exception as e:
-            logger.error(f"❌ Ошибка обработки успешного платежа: {e}")
+            logger.error(f"❌ Ошибка обработки успешного платежа: {format_error_traceback(e)}")
             return False
     
     async def _activate_subscription(self, payment: Payment) -> bool:
@@ -262,7 +263,7 @@ class TelegramStarsPaymentService:
             return True
             
         except Exception as e:
-            logger.error(f"❌ Ошибка активации подписки: {e}")
+            logger.error(f"❌ Ошибка активации подписки: {format_error_traceback(e)}")
             return False
     
     async def get_payment_plans(self) -> List[Dict[str, Any]]:
@@ -349,7 +350,7 @@ class TelegramStarsPaymentService:
             return result
             
         except Exception as e:
-            logger.error(f"❌ Ошибка получения истории платежей: {e}")
+            logger.error(f"❌ Ошибка получения истории платежей: {format_error_traceback(e)}")
             return []
     
     async def refund_payment(self, payment_id: int, reason: str = None) -> bool:
@@ -383,7 +384,7 @@ class TelegramStarsPaymentService:
             return False
             
         except Exception as e:
-            logger.error(f"❌ Ошибка возврата платежа: {e}")
+            logger.error(f"❌ Ошибка возврата платежа: {format_error_traceback(e)}")
             return False
 
 
