@@ -1,0 +1,172 @@
+name: Deploy VPN Bot to Server
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  PROJECT_NAME: vpn_bot
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - name: Get build number
+      id: vars
+      run: echo "build_number=${{ github.ref_name }}-${{ github.run_number }}" >> $GITHUB_OUTPUT
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Extract metadata for Docker
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=sha,prefix=${{ github.ref_name }}-${{ github.run_number }}-
+          type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy_files_delivery:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare deployment files
+        run: |
+          # Создаем архив с необходимыми файлами
+          tar -czf deploy-files.tar.gz \
+            docker-compose.prod.yml \
+            docker-compose.dev.yml \
+            .env.example \
+            alembic.ini \
+            alembic/ \
+            scripts/
+
+      - name: Deliver deploy files
+        uses: appleboy/scp-action@v0.1.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "deploy-files.tar.gz"
+          target: "/home/${{ secrets.SSH_USERNAME }}/vpn_bot"
+          strip_components: 0
+
+  deploy:
+    needs: deploy_files_delivery
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - name: Deploy to Server
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.SSH_PORT }}
+        script: |
+          set -e
+          
+          # Переходим в директорию проекта
+          cd $HOME/vpn_bot
+          
+          # Распаковываем новые файлы
+          tar -xzf deploy-files.tar.gz
+          
+          # Копируем .env.example в .env если его нет
+          if [ ! -f .env ]; then
+            cp .env.example .env
+            echo "⚠️ .env файл создан из .env.example. Пожалуйста, настройте его вручную!"
+          fi
+          
+          # Получаем последний образ из реестра
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest
+          
+          # Останавливаем текущий контейнер
+          docker-compose -f docker-compose.prod.yml down || true
+          
+          # Запускаем миграции базы данных
+          if [ -f alembic.ini ]; then
+            echo "🔄 Запуск миграций базы данных..."
+            docker-compose -f docker-compose.prod.yml run --rm vpn_bot python scripts/run_migration.py
+          fi
+          
+          # Запускаем обновленный контейнер
+          docker-compose -f docker-compose.prod.yml up -d --remove-orphans
+          
+          # Очищаем старые образы
+          docker image prune -f
+          
+          # Проверяем статус контейнера
+          echo "🚀 Deployment completed!"
+          docker ps --filter "name=vpn_bot" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          
+          # Показываем последние логи
+          echo "📋 Последние логи контейнера:"
+          docker-compose -f docker-compose.prod.yml logs --tail=20 vpn_bot
+
+  health_check:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - name: Health Check
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.SSH_PORT }}
+        script: |
+          set -e
+          
+          echo "🔍 Проверка здоровья приложения..."
+          
+          # Ждем 30 секунд для запуска
+          sleep 30
+          
+          # Проверяем статус контейнера
+          if ! docker ps --filter "name=vpn_bot" --format "{{.Status}}" | grep -q "Up"; then
+            echo "❌ Контейнер не запущен!"
+            docker-compose -f docker-compose.prod.yml logs vpn_bot
+            exit 1
+          fi
+          
+          # Проверяем логи на наличие ошибок
+          if docker-compose -f docker-compose.prod.yml logs --tail=50 vpn_bot | grep -i "error\|exception\|failed"; then
+            echo "⚠️ Обнаружены ошибки в логах!"
+            docker-compose -f docker-compose.prod.yml logs --tail=50 vpn_bot
+            exit 1
+          fi
+          
+          echo "✅ Health check passed!"
