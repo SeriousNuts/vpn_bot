@@ -67,7 +67,7 @@ jobs:
             docker-compose.dev.yml \
             .env.example \
             alembic.ini \
-            alembic/ \
+            migrations/ \
             scripts/
 
       - name: Deliver deploy files
