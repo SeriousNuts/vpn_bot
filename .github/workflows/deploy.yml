@@ -36,7 +36,7 @@ jobs:
       uses: docker/metadata-action@v4
       with:
         images: |
-          images: ${{ vars.DOCKERHUB_URL }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.PROJECT_NAME }}
+          images: ${{ vars.DOCKERHUB_URL }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}
     
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
