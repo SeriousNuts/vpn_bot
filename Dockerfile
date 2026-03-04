@@ -19,8 +19,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Make entrypoint script executable
-RUN chmod +x docker-entrypoint.sh
 
 # Create logs directory
 RUN mkdir -p logs
@@ -34,9 +32,6 @@ USER app
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import asyncio; from src.bot import bot; asyncio.run(bot.get_me())" || exit 1
-
-# Use entrypoint script
-ENTRYPOINT ["./docker-entrypoint.sh"]
 
 # Start command
 CMD ["python", "main.py"]
