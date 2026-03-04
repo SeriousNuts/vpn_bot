@@ -69,32 +69,23 @@ async def cmd_start(message: Message):
         
         if not user:
             # Создаем нового пользователя
-            user = await user_repo.create_user(
+            await user_repo.create_user(
                 telegram_id=message.from_user.id,
-                username=message.from_user.username,
-                first_name=message.from_user.first_name,
-                last_name=message.from_user.last_name
             )
             
             welcome_text = (
-                "🎉 **Добро пожаловать в VPN Bot!**\n\n"
+                f"🎉 **Добро пожаловать {user.telegram_id} в VPN Bot!**\n\n"
                 "🚀 Я помогу вам получить доступ к безопасному и быстрому интернету.\n\n"
                 "💡 **Что я могу делать:**\n"
                 "• 📱 Управлять вашей VPN подпиской\n"
-                "• 💎 Принимать оплату через Telegram Stars\n"
+                "• 💎 Принимать оплату через Telegram Stars и cryptoBOT\n"
                 "• 📊 Показывать статистику использования\n"
-                "• 💬 Оказывать поддержку\n\n"
+                "• 💬 Даже есть поддержка\n\n"
                 "🎯 **Начните с выбора тарифа:**"
             )
         else:
-            # Обновляем информацию о пользователе
-            user.username = message.from_user.username
-            user.first_name = message.from_user.first_name
-            user.last_name = message.from_user.last_name
-            await user_repo.update_user(user)
-            
             welcome_text = (
-                f"👋 **С возвращением, {user.first_name or 'пользователь'}!**\n\n"
+                f"👋 **С возвращением, tg_{user.telegram_id or 'пользователь'}!**\n\n"
                 "🚀 Готов помочь вам с VPN подпиской.\n\n"
                 "💡 **Доступные действия:**\n"
                 "• 📱 Посмотреть текущую подписку\n"
