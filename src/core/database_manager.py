@@ -300,16 +300,12 @@ class UserRepository:
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
     
-    async def create_user(self, telegram_id: int, username: Optional[str] = None, 
-                      first_name: Optional[str] = None, last_name: Optional[str] = None,
+    async def create_user(self, telegram_id: int,
                       status: str = "active") -> User:
         """Create new user"""
         return await self.db.create(
             User, 
             telegram_id=telegram_id,
-            username=username,
-            first_name=first_name,
-            last_name=last_name,
             status=status
         )
 
