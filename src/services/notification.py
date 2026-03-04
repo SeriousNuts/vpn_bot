@@ -2,17 +2,16 @@
 Сервис уведомлений для VPN Bot
 """
 
-import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import List, Optional
+from datetime import datetime
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from sqlalchemy.orm import selectinload
 
-from src.core.config import settings
-from src.core.database import subscription_repo, notification_repo, user_repo
-from src.services.marzban import marzban_api
-from src.models import Subscription, NotificationLog
+from src.core.database import subscription_repo, notification_repo
+from src.models import Subscription
+from src.services.marzban import marzban_service
 
 logger = logging.getLogger(__name__)
 
@@ -236,12 +235,9 @@ class NotificationService:
             )
             
             # Деактивировать в Marzban если имя пользователя существует
-            if subscription.marzban_username:
+            if subscription.user:
                 try:
-                    await marzban_api.update_user(
-                        subscription.marzban_username,
-                        status="disabled"
-                    )
+                    await marzban_service.change_user_status(username=subscription.user.username, status="Disabled")
                 except Exception as e:
                     logger.warning(f"Не удалось деактивировать пользователя Marzban {subscription.marzban_username}: {e}")
             

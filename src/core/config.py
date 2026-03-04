@@ -1,5 +1,5 @@
 import json
-from typing import Dict
+from typing import Dict, Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -14,8 +14,8 @@ class Settings(BaseSettings):
 
     # Database Configuration
     database_url: str = Field(..., validation_alias="DATABASE_URL")
+    alembic_url: str = Field(..., validation_alias="ALEMBIC_URL")
     init_db: bool = Field(..., validation_alias="INIT_DB")
-
 
     # Marzban API Configuration
     marzban_url: str = Field(..., validation_alias="MARZBAN_URL")
@@ -24,10 +24,16 @@ class Settings(BaseSettings):
 
     # CryptoBot Configuration
     cryptobot_token: str = Field(..., validation_alias="CRYPTOBOT_TOKEN")
-    cryptobot_provider_token: str = Field(..., validation_alias="CRYPTOBOT_PROVIDER_TOKEN")
+    cryptobot_url: str = Field(..., validation_alias="CRYPTOBOT_URL")
 
     # Payment Configuration
     subscription_prices: Dict[str, float] = Field(..., validation_alias="SUBSCRIPTION_PRICES")
+    
+    # Additional price configurations (optional)
+    subscription_1_month: Optional[float] = Field(default=None, validation_alias="SUBSCRIPTION_1_MONTH")
+    subscription_3_months: Optional[float] = Field(default=None, validation_alias="SUBSCRIPTION_3_MONTHS")
+    subscription_6_months: Optional[float] = Field(default=None, validation_alias="SUBSCRIPTION_6_MONTHS")
+    subscription_1_year: Optional[float] = Field(default=None, validation_alias="SUBSCRIPTION_1_YEAR")
 
     # Notification Settings
     expiry_notification_days: list[int] = Field(..., validation_alias="EXPIRY_NOTIFICATION_DAYS", )
@@ -41,6 +47,34 @@ class Settings(BaseSettings):
 
     # Security
     secret_key: str = Field(default="your-secret-key-here", validation_alias="SECRET_KEY")
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Объединяем цены из разных источников
+        self._merge_subscription_prices()
+    
+    def _merge_subscription_prices(self):
+        """Объединяет цены из SUBSCRIPTION_PRICES и отдельных переменных"""
+        merged_prices = {}
+        
+        # Сначала берем из основной переменной
+        if self.subscription_prices:
+            merged_prices.update(self.subscription_prices)
+        
+        # Затем добавляем/переопределяем из отдельных переменных
+        price_mappings = {
+            "1_month": self.subscription_1_month,
+            "3_months": self.subscription_3_months,
+            "6_months": self.subscription_6_months,
+            "1_year": self.subscription_1_year
+        }
+        
+        for key, value in price_mappings.items():
+            if value is not None:
+                merged_prices[key] = value
+        
+        # Обновляем основной словарь
+        self.subscription_prices = merged_prices
 
     @classmethod
     def parse_expiry_days(cls, v):
@@ -107,5 +141,7 @@ if __name__ == "__main__":
     print(f"Bot Token: {'*' * len(settings.bot_token)}")  # Скрываем токен
     print(f"Admin ID: {settings.admin_id}")
     print(f"Support Username: {settings.support_username}")
+    print(f"Bot Username: {settings.bot_username}")
     print(f"Expiry Notification Days: {settings.expiry_notification_days}")
     print(f"Subscription Prices: {settings.subscription_prices}")
+    print(f"Individual Prices: 1_month={settings.subscription_1_month}, 3_months={settings.subscription_3_months}, 6_months={settings.subscription_6_months}, 1_year={settings.subscription_1_year}")

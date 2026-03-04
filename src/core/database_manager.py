@@ -5,24 +5,24 @@ Advanced Database Manager with atomic transactions and connection recovery
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import Optional, Type, TypeVar, Generic, List, Dict, Any, Callable
 from functools import wraps
+from typing import Optional, Type, TypeVar, List, Dict, Any, Callable
+
+from sqlalchemy import select, update, delete, and_
+from sqlalchemy.exc import (
+    DisconnectionError, OperationalError,
+    InterfaceError
+)
 from sqlalchemy.ext.asyncio import (
     AsyncSession, async_sessionmaker, create_async_engine,
     AsyncEngine
 )
-from sqlalchemy.exc import (
-    SQLAlchemyError, DisconnectionError, OperationalError,
-    InterfaceError, DatabaseError
-)
-from sqlalchemy.orm import selectinload, joinedload
-from sqlalchemy import select, update, delete, insert, and_, or_
-from sqlalchemy.sql import Select, Update, Delete, Insert
+from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.expression import func
 
 from src.core.config import settings
+from src.models import User, Subscription, Payment, NotificationLog
 from src.models.base import Base
-from src.models import User, Subscription, Payment, NotificationLog, AdminAction
 
 logger = logging.getLogger(__name__)
 
@@ -300,9 +300,21 @@ class UserRepository:
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
     
-    async def create_user(self, telegram_id: int, status: str = "active") -> User:
+    async def create_user(self, telegram_id: int, username: Optional[str] = None, 
+                      first_name: Optional[str] = None, last_name: Optional[str] = None,
+                      status: str = "active") -> User:
         """Create new user"""
-        return await self.db.create(User, telegram_id=telegram_id, status=status)
+        return await self.db.create(
+            User, 
+            telegram_id=telegram_id,
+            username=username,
+            first_name=first_name,
+            last_name=last_name,
+            status=status
+        )
+
+    async def get_user_by_id(self, user_id: int) -> Optional[User]:
+        return await self.db.get_by_id(User, user_id)
     
     async def get_user_by_telegram_id(self, telegram_id: int) -> Optional[User]:
         """Get user by Telegram ID"""
@@ -344,17 +356,9 @@ class SubscriptionRepository:
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
     
-    async def create_subscription(self, subscription: Subscription) -> Subscription:
+    async def create_subscription(self, **kwargs) -> Subscription:
         """Create new subscription"""
-        return await self.db.create(
-            Subscription,
-            user_id=subscription.user_id,
-            plan_name=subscription.plan_name,
-            price=subscription.price,
-            duration_days=subscription.duration_days,
-            protocol=subscription.protocol,
-            status=subscription.status,
-        )
+        return await self.db.create(Subscription, **kwargs)
     
     async def get_user_subscriptions(self, user_id: int, active_only: bool = False) -> List[Subscription]:
         """Get user subscriptions"""
@@ -417,16 +421,9 @@ class PaymentRepository:
         """Get payment"""
         return await self.db.get_by_id(Payment, payment_id)
     
-    async def create_payment(self, payment: Payment) -> Payment:
+    async def create_payment(self, **kwargs) -> Payment:
         """Create new payment"""
-        return await self.db.create(
-            Payment,
-            user_id=payment.user_id,
-            subscription_id=payment.subscription_id,
-            amount=payment.amount,
-            payment_method=payment.payment_method,
-            status=payment.status,
-        )
+        return await self.db.create(Payment, **kwargs)
     
     async def get_payment_by_invoice_id(self, invoice_id: str) -> Optional[Payment]:
         """Get payment by invoice ID"""
@@ -445,9 +442,18 @@ class PaymentRepository:
         updated = await self.db.update(Payment, payment_id, **update_data)
         return updated is not None
     
-    async def get_user_payments(self, user_id: int) -> List[Payment]:
+    async def update_payment(self, payment: Payment) -> bool:
+        """Update payment object"""
+        updated = await self.db.update(
+            Payment, 
+            payment.id,
+            **payment.__dict__
+        )
+        return updated is not None
+    
+    async def get_user_payments(self, user_id: int, limit: int = 100) -> List[Payment]:
         """Get user payments"""
-        return await self.db.get_all(Payment, filters={"user_id": user_id}, order_by="created_at")
+        return await self.db.get_all(Payment, filters={"user_id": user_id}, order_by="created_at", limit=limit)
     
     async def get_pending_payments(self) -> List[Payment]:
         """Get all pending payments"""
@@ -504,10 +510,9 @@ async def init_db():
     await db_manager.initialize()
     
     # Create tables if they don't exist
-    async with db_manager.get_session() as session:
+    async with db_manager.get_session():
         # Import all models to ensure they're registered
-        from src.models import User, Subscription, Payment, NotificationLog, AdminAction
-        
+
         # Create all tables
         async with db_manager._engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)

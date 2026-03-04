@@ -6,7 +6,7 @@ import asyncio
 from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import async_engine_from_config, create_async_engine
 from alembic import context
 import os
 import sys
@@ -51,7 +51,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = settings.alembic_url
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -76,10 +76,21 @@ async def run_async_migrations() -> None:
 
     """
 
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
+    connectable = create_async_engine(
+        settings.alembic_url,
+        echo=settings.log_level.upper() == "DEBUG",
+        pool_size=20,
+        max_overflow=30,
+        pool_pre_ping=True,
+        pool_recycle=3600,
+        pool_timeout=30,
+        connect_args={
+            "command_timeout": 60,
+            "server_settings": {
+                "application_name": "vpn_bot",
+                "jit": "off"
+            }
+        }
     )
 
     async with connectable.connect() as connection:

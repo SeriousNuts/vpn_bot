@@ -9,3 +9,4 @@ cryptography==41.0.7
 python-dotenv==1.0.0
 apscheduler==3.10.4
 aiofiles==23.2.1
+marzban==0.4.3

@@ -9,19 +9,28 @@ from src.core.database import get_db_context
 from src.enums import PaymentStatus
 from src.enums import SubscriptionStatus
 from src.models import Payment
-from src.services.marzban import marzban_api
+from src.services.marzban import marzban_service
 
 
 class CryptoBotAPI:
     def __init__(self):
-        self.base_url = "https://pay.crypt.bot/api"
+        self.base_url = settings.cryptobot_url
         self.token = settings.cryptobot_token
-        self.provider_token = settings.cryptobot_provider_token
     
     def get_headers(self) -> Dict[str, str]:
         """Get request headers"""
         return {"Crypto-Pay-API-Token": self.token}
-    
+
+    async def get_me(self):
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(f"{self.base_url}/api/getMe", headers=self.get_headers())
+                print(response.json())
+                return response.json()
+            except Exception as e:
+                print(f"Failed to get me: {e}")
+                return None
+
     async def create_invoice(
         self, 
         amount: float, 
@@ -41,16 +50,19 @@ class CryptoBotAPI:
             "allow_anonymous": False,
             "expires_in": 3600  # 1 hour expiry
         }
+        await self.get_me()
         
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
-                    f"{self.base_url}/createInvoice",
+                    f"{self.base_url}/api/createInvoice",
                     json=payload,
                     headers=self.get_headers()
                 )
                 
                 if response.status_code == 200:
+                    print(f"Created invoice: {response.json()}")
+                    print(f"Created invoice status: {response.status_code}")
                     return response.json()
                 else:
                     print(f"Failed to create invoice: {response.status_code} - {response.text}")
@@ -60,6 +72,118 @@ class CryptoBotAPI:
                 print(f"Create invoice error: {e}")
                 return None
     
+    async def create_payment_usdt(
+        self, 
+        amount: float, 
+        description: str, 
+        user_id: int, 
+        payment_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """Create a new invoice with USDT"""
+        payload = {
+            "asset": "USDT",
+            "amount": str(amount),
+            "description": description,
+            "paid_btn_name": "openBot",
+            "paid_btn_url": f"https://t.me/{settings.bot_username}",
+            "payload": json.dumps({"payment_id": payment_id, "user_id": user_id}),
+            "allow_comments": False,
+            "allow_anonymous": False,
+            "expires_in": 3600  # 1 hour expiry
+        }
+        await self.get_me()
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(
+                    f"{self.base_url}/api/createInvoice",
+                    json=payload,
+                    headers=self.get_headers()
+                )
+                
+                if response.status_code == 200:
+                    print(f"Created USDT invoice: {response.json()}")
+                    return response.json()
+                else:
+                    print(f"Failed to create USDT invoice: {response.status_code} - {response.text}")
+                    return None
+            except Exception as e:
+                print(f"Error creating USDT invoice: {e}")
+                return None
+
+    async def create_payment_ton(
+        self, 
+        amount: float, 
+        description: str, 
+        user_id: int,
+        payment_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """Create a new payment with TON"""
+        payload = {
+            "asset": "TON",
+            "amount": str(amount),
+            "description": description,
+            "paid_btn_name": "openBot",
+            "paid_btn_url": f"https://t.me/{settings.bot_username}",
+            "payload": json.dumps({"payment_id": payment_id, "user_id": user_id}),
+            "allow_comments": False,
+            "allow_anonymous": False,
+            "expires_in": 3600  # 1 hour expiry
+        }
+        
+        print(f"TON payment payload: {payload}")
+        await self.get_me()
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(
+                    f"{self.base_url}/api/createInvoice",
+                    json=payload,
+                    headers=self.get_headers()
+                )
+                
+                print(f"TON API response status: {response.status_code}")
+                print(f"TON API response headers: {response.headers}")
+                print(f"TON API response text: {response.text}")
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    print(f"Created TON invoice: {result}")
+                    
+                    # Проверяем структуру ответа
+                    if result.get('ok'):
+                        result_data = result.get("result")
+                        print(f"TON result_data: {result_data}")
+                        print(f"TON result_data type: {type(result_data)}")
+                        print(f"TON result_data keys: {list(result_data.keys()) if result_data else 'None'}")
+                        
+                        if result_data and isinstance(result_data, dict) and len(result_data) > 0:
+                            return {
+                                "ok": True,
+                                "invoice_id": str(result_data.get("invoice_id")),
+                                "pay_url": result_data.get("pay_url"),
+                                "amount": result_data.get("amount"),
+                                "asset": result_data.get("asset"),
+                                "created_at": result_data.get("created_at")
+                            }
+                        else:
+                            error_msg = f"Empty or invalid result data: {result_data}"
+                            print(f"Error: {error_msg}")
+                            return {"ok": False, "error": error_msg}
+                    else:
+                        error_msg = f"Unexpected response format: {result}"
+                        print(f"Error: {error_msg}")
+                        return {"ok": False, "error": error_msg, "response": result}
+                        
+                else:
+                    error_msg = f"HTTP {response.status_code}: {response.text}"
+                    print(f"Error: {error_msg}")
+                    return {"ok": False, "error": error_msg}
+            except Exception as e:
+                error_msg = f"Exception: {str(e)}"
+                print(f"Error: {error_msg}")
+                return {"ok": False, "error": error_msg}
+    
     async def get_invoice(self, invoice_id: str) -> Optional[Dict[str, Any]]:
         """Get invoice information"""
         params = {"invoice_id": invoice_id}
@@ -67,15 +191,19 @@ class CryptoBotAPI:
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(
-                    f"{self.base_url}/getInvoices",
+                    f"{self.base_url}/api/getInvoices",
                     params=params,
                     headers=self.get_headers()
                 )
                 
                 if response.status_code == 200:
                     data = response.json()
-                    items = data.get("items", [])
-                    return items[0] if items else None
+                    if data.get("ok"):
+                        items = data.get("result").get("items", [])
+                        return items[0] if items else None
+                    else:
+                        print(f"Failed to get invoice result is not ok: {response.status_code} - {response.text}")
+                        return None
                 else:
                     print(f"Failed to get invoice: {response.status_code} - {response.text}")
                     return None
@@ -102,7 +230,7 @@ class CryptoBotAPI:
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(
-                    f"{self.base_url}/getBalance",
+                    f"{self.base_url}/api/getBalance",
                     headers=self.get_headers()
                 )
                 
@@ -121,7 +249,7 @@ class CryptoBotAPI:
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(
-                    f"{self.base_url}/getExchangeRates",
+                    f"{self.base_url}/api/getExchangeRates",
                     headers=self.get_headers()
                 )
                 
@@ -153,17 +281,71 @@ class PaymentProcessor:
             user_id=user_id,
             payment_id=payment_id
         )
-        
-        if invoice:
+        print(f"Created payment on payment processor: {invoice}")
+        if invoice and invoice.get('ok'):
             return {
-                "invoice_id": invoice.get("invoice_id"),
-                "pay_url": invoice.get("pay_url"),
-                "amount": invoice.get("amount"),
-                "asset": invoice.get("asset"),
-                "created_at": invoice.get("created_at")
+                "invoice_id": invoice.get("result").get("id"),
+                "pay_url": invoice.get("result").get("pay_url"),
+                "amount": invoice.get("result").get("amount"),
+                "asset": invoice.get("result").get("asset"),
+                "created_at": invoice.get("result").get("created_at")
             }
         return None
     
+    async def create_payment_usdt(
+        self, 
+        amount: float, 
+        description: str, 
+        user_id: int,
+        payment_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """Create a new payment with USDT"""
+        invoice = await self.cryptobot.create_payment_usdt(
+            amount=amount,
+            description=description,
+            user_id=user_id,
+            payment_id=payment_id
+        )
+        print(f"Created USDT payment on payment processor: {invoice}")
+        if invoice and invoice.get('ok'):
+            return {
+                "invoice_id": invoice.get("result").get("id"),
+                "pay_url": invoice.get("result").get("pay_url"),
+                "amount": invoice.get("result").get("amount"),
+                "asset": invoice.get("result").get("asset"),
+                "created_at": invoice.get("result").get("created_at")
+            }
+        return None
+
+    async def create_payment_ton(
+        self, 
+        amount: float, 
+        description: str, 
+        user_id: int,
+        payment_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """Create a new payment with TON"""
+        invoice = await self.cryptobot.create_payment_ton(
+            amount=amount,
+            description=description,
+            user_id=user_id,
+            payment_id=payment_id
+        )
+        print(f"Created TON payment on payment processor: {invoice}")
+        
+        # Проверяем формат ответа от CryptoBotAPI
+        if invoice and invoice.get('ok'):
+            # Данные уже правильно обработаны в CryptoBotAPI
+            return invoice
+        elif invoice and "error" in invoice:
+            print(f"Error in TON invoice response: {invoice}")
+            return {"ok": False, "error": invoice.get("error")}
+        else:
+            print(f"Unexpected TON invoice response format: {invoice}")
+            return {"ok": False, "error": "Unexpected response format", "response": invoice}
+            
+        return None
+
     async def check_payment(self, invoice_id: str) -> Optional[Dict[str, Any]]:
         """Check payment status"""
         invoice = await self.cryptobot.get_invoice(invoice_id)
@@ -216,15 +398,10 @@ class PaymentProcessor:
                         
                         # Create VPN user in Marzban
                         user = payment.user
-                        result = await marzban_api.create_user(user, subscription)
+                        result = await marzban_service.create_user(user, subscription)
                         
-                        if result:
-                            # Get subscription URL
-                            subscription_url = await marzban_api.get_user_subscription_url(
-                                user.marzban_username
-                            )
-                            if subscription_url:
-                                subscription.subscription_url = subscription_url
+                        if result and result.subscription_url:
+                                subscription.subscription_url = result.subscription_url
                                 subscription.config_data = result
                     
                     await db.commit()

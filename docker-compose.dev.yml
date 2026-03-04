@@ -9,7 +9,6 @@ services:
       POSTGRES_DB: vpn_bot_dev
       POSTGRES_USER: vpn_user
       POSTGRES_PASSWORD: vpn_password
-      POSTGRES_HOST_AUTH_METHOD: trust
     command: |
       postgres 
       -c listen_addresses='*' 
@@ -20,7 +19,7 @@ services:
 
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
-      - ./pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
       - "5433:5432"  # Different port to avoid conflicts
