@@ -22,6 +22,7 @@ COPY . .
 
 # Create logs directory
 RUN mkdir -p logs
+RUN chmod 755 logs
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash app \
