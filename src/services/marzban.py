@@ -107,8 +107,7 @@ class MarzbanService:
             
             # Рассчитываем время истечения подписки
             expire_timestamp = int((datetime.now() + timedelta(days=subscription.duration_days)).timestamp())
-            
-            # Создаем пользователя с использованием современных моделей
+
             new_user = UserCreate(
                 username=username,
                 proxies={subscription.protocol: proxy_config},
