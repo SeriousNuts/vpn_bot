@@ -31,11 +31,6 @@ services:
     networks:
       - vpn_bot_network
 
-volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
 
 networks:
   vpn_bot_network:

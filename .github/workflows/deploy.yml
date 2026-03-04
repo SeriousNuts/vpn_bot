@@ -110,12 +110,6 @@ jobs:
           # Останавливаем текущий контейнер
           docker-compose -f docker-compose.prod.yml down || true
           
-          # Запускаем миграции базы данных
-          if [ -f alembic.ini ]; then
-            echo "🔄 Запуск миграций базы данных..."
-            docker-compose -f docker-compose.prod.yml run --rm vpn_bot python scripts/run_migration.py
-          fi
-          
           # Запускаем обновленный контейнер
           docker-compose -f docker-compose.prod.yml up -d --remove-orphans
           
