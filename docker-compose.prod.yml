@@ -1,63 +1,15 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: vpn_bot_db_prod
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-    networks:
-      - vpn_bot_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Redis for caching
-  redis:
-    image: redis:7-alpine
-    container_name: vpn_bot_redis_prod
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    networks:
-      - vpn_bot_network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # VPN Bot Application
   vpn_bot:
     build: .
     container_name: vpn_bot_app_prod
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      BOT_TOKEN: ${BOT_TOKEN}
-      ADMIN_ID: ${ADMIN_ID}
-      SUPPORT_USERNAME: ${SUPPORT_USERNAME}
-      MARZBAN_URL: ${MARZBAN_URL}
-      MARZBAN_USERNAME: ${MARZBAN_USERNAME}
-      MARZBAN_PASSWORD: ${MARZBAN_PASSWORD}
-      CRYPTOBOT_TOKEN: ${CRYPTOBOT_TOKEN}
-      CRYPTOBOT_PROVIDER_TOKEN: ${CRYPTOBOT_PROVIDER_TOKEN}
-      SUBSCRIPTION_PRICES: ${SUBSCRIPTION_PRICES}
-      EXPIRY_NOTIFICATION_DAYS: ${EXPIRY_NOTIFICATION_DAYS}
+    env_file:
+      - .env
     volumes:
       - ./logs:/app/logs
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     restart: unless-stopped
     networks:
       - vpn_bot_network
