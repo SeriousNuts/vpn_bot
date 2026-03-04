@@ -39,7 +39,7 @@ jobs:
           ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.PROJECT_NAME }}
         tags: |
           type=ref,event=branch
-          type=sha,prefix=${{ github.ref_name }}
+          type=sha,prefix=${{ github.ref_name }}-${{ github.run_number }}-
           type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
     
     - name: Build and push Docker image
