@@ -36,10 +36,10 @@ jobs:
       uses: docker/metadata-action@v4
       with:
         images: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}
+          ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKER_HUB_URL }}/${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.PROJECT_NAME }}
         tags: |
           type=ref,event=branch
-          type=sha,prefix=${{ github.ref_name }}-${{ github.run_number }}-
+          type=sha,prefix=${{ github.ref_name }}
           type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
     
     - name: Build and push Docker image
