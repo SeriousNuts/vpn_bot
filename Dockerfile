@@ -20,13 +20,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 
-# Create logs directory
-RUN mkdir -p logs
-RUN chmod 777 logs
+# Create non-root user first
+RUN useradd --create-home --shell /bin/bash app
 
-# Create non-root user
-RUN useradd --create-home --shell /bin/bash app \
-    && chown -R app:app /app
+# Create logs directory and set proper permissions
+RUN mkdir -p logs && \
+    chown -R app:app /app && \
+    chmod -R 755 /app && \
+    chmod 777 logs
+
 USER app
 
 
