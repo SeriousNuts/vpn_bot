@@ -98,10 +98,6 @@ jobs:
           # Распаковываем новые файлы
           tar -xzf deploy-files.tar.gz
           
-          # Создаем директорию логов с правильными правами
-          mkdir -p logs
-          chmod 755 logs
-          
           # Копируем .env.example в .env если его нет
           if [ ! -f .env ]; then
             cp .env.example .env

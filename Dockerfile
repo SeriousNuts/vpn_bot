@@ -16,21 +16,20 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
-
-
 # Create non-root user first
 RUN useradd --create-home --shell /bin/bash app
 
-# Create logs directory and set proper permissions
-RUN mkdir -p logs && \
+# Copy application code first
+COPY . .
+
+# Create logs directory and set proper permissions as app user
+USER root
+RUN mkdir -p /app/logs && \
     chown -R app:app /app && \
     chmod -R 755 /app && \
-    chmod 777 logs
+    chmod 777 /app/logs
 
 USER app
-
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
