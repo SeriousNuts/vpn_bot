@@ -105,7 +105,7 @@ jobs:
           fi
           
           # Получаем последний образ из реестра
-          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:main
           
           # Останавливаем текущий контейнер
           docker-compose -f docker-compose.prod.yml down || true
