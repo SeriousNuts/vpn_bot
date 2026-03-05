@@ -9,6 +9,7 @@ from src.core.config import settings
 from src.core.database import init_db
 from src.handlers.admin import admin_router
 from src.handlers.user import user_router
+from src.handlers.user_updated import user_router as user_updated_router
 from src.services.notification import NotificationService
 
 
@@ -50,6 +51,7 @@ async def main() -> None:
     bot, dp = init_bot()
     # Include routers
     dp.include_router(user_router)
+    dp.include_router(user_updated_router)
     dp.include_router(admin_router)
 
     await delete_webhook(bot)
