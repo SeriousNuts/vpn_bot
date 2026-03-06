@@ -39,8 +39,8 @@ async def update_main_keyboard_with_payments():
                 KeyboardButton(text="📊 Статистика")
             ],
             [
-                KeyboardButton(text="� Инструкция по подключению"),
-                KeyboardButton(text="�💬 Поддержка")
+                KeyboardButton(text="Инструкция по подключению"),
+                KeyboardButton(text="Поддержка")
             ],
             [
                 KeyboardButton(text="⚙️ Настройки")

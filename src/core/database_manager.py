@@ -386,6 +386,11 @@ class SubscriptionRepository:
         updated = await self.db.update(Subscription, subscription_id, status=status)
         return updated is not None
     
+    async def update_subscription_with_expiry(self, subscription_id: int, status: str, expires_at) -> bool:
+        """Update subscription status and expiry date"""
+        updated = await self.db.update(Subscription, subscription_id, status=status, expires_at=expires_at)
+        return updated is not None
+    
     async def get_expiring_subscriptions(self, days_ahead: int = 3) -> List[Subscription]:
         """Get subscriptions expiring soon"""
         from datetime import datetime, timedelta

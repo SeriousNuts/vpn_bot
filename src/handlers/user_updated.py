@@ -18,6 +18,7 @@ from src.core.database import user_repo, subscription_repo, payment_repo
 from src.enums import SubscriptionStatus
 from src.handlers.payment_integration import update_main_keyboard_with_payments
 from src.handlers.payment_stars import process_stars_payment
+from src.models import Subscription
 from src.services.marzban import marzban_service
 from src.services.payment import payment_processor
 from utils.format_error import format_error_traceback
@@ -476,7 +477,7 @@ async def process_payment_cryptobot_usdt(callback: CallbackQuery):
                 f"⏰ Оплата будет обработана автоматически после поступления средств",
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="💳 Оплатить", url=payment_info['pay_url'])],
-                    [InlineKeyboardButton(text="🔄 Проверить оплату", callback_data=f"check_usdt_payment_{payment.id}")],
+                    [InlineKeyboardButton(text="🔄 Проверить оплату", callback_data=f"check_payment_{payment.id}")],
                     [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
                 ]),
                 parse_mode="HTML"
@@ -729,6 +730,17 @@ async def activate_subscription_after_payment(payment) -> bool:
             logger.error(f"[USER-009] Подписка не найдена: {payment.subscription_id}")
             return False
         
+        # Вычисляем дату истечения подписки
+        from datetime import datetime, timedelta
+        expire_date = datetime.utcnow() + timedelta(days=subscription.duration_days)
+        
+        # Обновляем подписку с датой истечения
+        await subscription_repo.update_subscription_with_expiry(
+            subscription.id,
+            status=SubscriptionStatus.ACTIVE,
+            expires_at=expire_date
+        )
+        
         # Активируем подписку в Marzban
         user = await user_repo.get_user_by_id(payment.user_id)
         marzban_user = await marzban_service.create_user(
@@ -737,15 +749,11 @@ async def activate_subscription_after_payment(payment) -> bool:
         )
 
         
-        # Обновляем статус подписки
-        await subscription_repo.update_subscription_status(
-            subscription.id, 
-            SubscriptionStatus.ACTIVE
-        )
         if not marzban_user:
             logger.error("[USER-010] Не удалось создать пользователя в marzban")
             return False
-        logger.info(f"✅ Подписка активирована: {subscription.id}")
+        
+        logger.info(f"✅ Подписка активирована: {subscription.id}, expires_at: {expire_date}")
         return True
         
     except Exception as e:
@@ -753,119 +761,11 @@ async def activate_subscription_after_payment(payment) -> bool:
         return False
 
 
-@user_router.message(F.text == "💳 История платежей")
-async def cmd_payment_history(message: Message):
+@user_router.message(F.text == "Инструкция по подключению")
+async def cmd_connection_guide(message: Message):
     """
-    Обработчик кнопки "История платежей"
+    Обработчик кнопки "Инструкция по подключению"
     """
-    try:
-        from src.handlers.payment_stars import cmd_payment_history
-        await cmd_payment_history(message)
-        
-    except Exception as e:
-        logger.error(f"[HIST-999] Ошибка в истории платежей: {format_error_traceback(e)}")
-        await message.answer(
-            "❌ [HIST-999] Произошла ошибка. Попробуйте позже.",
-            parse_mode=ParseMode.HTML
-        )
-
-
-@user_router.message(F.text == "📱 Моя подписка")
-async def cmd_my_subscription(message: Message):
-    """
-    Обработчик кнопки "Моя подписка"
-    """
-    try:
-        # Получаем пользователя
-        user = await user_repo.get_user_by_telegram_id(message.from_user.id)
-        if not user:
-            await message.answer(
-                "❌ Пользователь не найден. Используйте /start",
-                parse_mode=ParseMode.HTML
-            )
-            return
-        
-        # Получаем активную подписку
-        subscription = await subscription_repo.get_active_subscription(user.id)
-        
-        if not subscription:
-            text = (
-                "📱 <b>Ваша подписка</b>\n\n"
-                "❌ У вас нет активной подписки.\n\n"
-                "💎 <b>Хотите оформить?</b>\n"
-                "Нажмите кнопку \"💎 Купить подписку\" для выбора тарифа."
-            )
-        else:
-            # Получаем информацию из Marzban
-            if subscription.marzban_username:
-                marzban_user = await marzban_service.get_user(subscription.marzban_username)
-                
-                if marzban_user:
-                    # Формируем информацию о подписке
-                    expire_date = datetime.fromtimestamp(marzban_user.expire)
-                    used_gb = marzban_user.used_traffic / (1024**3)
-                    limit_gb = marzban_user.data_limit / (1024**3) if marzban_user.data_limit > 0 else "∞"
-                    
-                    status_emoji = {
-                        "active": "✅",
-                        "disabled": "❌",
-                        "limited": "⚠️",
-                        "expired": "🕐"
-                    }.get(marzban_user.status, "❓")
-                    
-                    text = (
-                        f"📱 <b>Ваша подписка</b>\n\n"
-                        f"{status_emoji} <b>Статус:</b> {marzban_user.status}\n"
-                        f"📅 <b>Действительна до:</b> {expire_date.strftime('%Y-%m-%d %H:%M')}\n"
-                        f"📊 <b>Трафик:</b> {used_gb:.2f}GB / {limit_gb}GB\n"
-                        f"🌐 <b>Протокол:</b> {subscription.protocol}\n"
-                        f"💰 <b>Тариф:</b> {subscription.plan_name}\n\n"
-                    )
-                    
-                    if marzban_user.subscription_url:
-                        text += f"🔗 <b>Подписка:</b> <a href=\"{marzban_user.subscription_url}\">получить конфигурацию</a>"
-                else:
-                    # Если не удалось получить данные из Marzban
-                    expire_date = subscription.expires_at
-                    text = (
-                        f"📱 <b>Ваша подписка</b>\n\n"
-                        f"✅ <b>Статус:</b> Активна\n"
-                        f"📅 <b>Действительна до:</b> {expire_date.strftime('%Y-%m-%d %H:%M')}\n"
-                        f"🌐 <b>Протокол:</b> {subscription.protocol}\n"
-                        f"💰 <b>Тариф:</b> {subscription.plan_name}\n\n"
-                        f"⚠️ <i>Конфигурация временно недоступна. Попробуйте позже.</i>"
-                    )
-            else:
-                # Если нет привязки к Marzban
-                expire_date = subscription.expires_at
-                text = (
-                    f"📱 <b>Ваша подписка</b>\n\n"
-                    f"✅ <b>Статус:</b> Активна\n"
-                    f"📅 <b>Действительна до:</b> {expire_date.strftime('%Y-%m-%d %H:%M')}\n"
-                    f"🌐 <b>Протокол:</b> {subscription.protocol}\n"
-                    f"💰 <b>Тариф:</b> {subscription.plan_name}\n\n"
-                    f"⚠️ <i>Конфигурация готовится...</i>"
-                )
-        
-        keyboard = await get_main_keyboard()
-        
-        await message.answer(
-            text,
-            reply_markup=keyboard,
-            parse_mode=ParseMode.HTML
-        )
-        
-    except Exception as e:
-        logger.error(f"[SUB-999] Ошибка в моей подписке: {format_error_traceback(e)}")
-        await message.answer(
-            "❌ [SUB-999] Произошла ошибка при загрузке подписки.",
-            parse_mode=ParseMode.HTML
-        )
-
-
-@user_router.callback_query(F.data == "show_connection_guide")
-async def show_connection_guide_callback(callback: CallbackQuery):
-    """Показать инструкцию по подключению из inline кнопки"""
     try:
         guide_text = (
             "📖 <b>Инструкция по подключению</b>\n\n"
@@ -903,6 +803,150 @@ async def show_connection_guide_callback(callback: CallbackQuery):
     except Exception as e:
         logger.error(f"[GUIDE-999] Ошибка в инструкции по подключению: {format_error_traceback(e)}")
         await message.answer(
+            "❌ [GUIDE-999] Произошла ошибка при загрузке инструкции.",
+            parse_mode="HTML"
+        )
+
+
+@user_router.message(F.text == "📱 Моя подписка")
+async def cmd_my_subscription(message: Message):
+    """
+    Обработчик кнопки "Моя подписка"
+    """
+    try:
+        # Получаем пользователя
+        user = await user_repo.get_user_by_telegram_id(message.from_user.id)
+        if not user:
+            await message.answer(
+                "❌ Пользователь не найден. Используйте /start",
+                parse_mode=ParseMode.HTML
+            )
+            return
+        
+        # Получаем активную подписку
+        subscription = await subscription_repo.get_active_subscription(user.id)
+        
+        if not subscription:
+            text = (
+                "📱 <b>Ваша подписка</b>\n\n"
+                "❌ У вас нет активной подписки.\n\n"
+                "💎 <b>Хотите оформить?</b>\n"
+                "Нажмите кнопку \"💎 Купить подписку\" для выбора тарифа."
+            )
+        else:
+            # Получаем информацию из Marzban
+            user = await user_repo.get_user_by_telegram_id(message.from_user.id)
+            if user.marzban_username:
+                marzban_user = await marzban_service.get_user(user.marzban_username)
+                
+                if marzban_user is not None:
+                    # Формируем информацию о подписке
+                    expire_date = datetime.fromtimestamp(marzban_user.expire) if marzban_user.expire else None
+                    used_gb = marzban_user.used_traffic / (1024**3)
+                    limit_gb = marzban_user.data_limit / (1024**3) if marzban_user.data_limit > 0 else "∞"
+                    
+                    status_emoji = {
+                        "active": "✅",
+                        "disabled": "❌",
+                        "limited": "⚠️",
+                        "expired": "🕐"
+                    }.get(marzban_user.status, "❓")
+                    
+                    expire_date_str = expire_date.strftime('%Y-%m-%d %H:%M') if expire_date else "Неизвестно"
+                    
+                    text = (
+                        f"📱 <b>Ваша подписка</b>\n\n"
+                        f"{status_emoji} <b>Статус:</b> {marzban_user.status}\n"
+                        f"📅 <b>Действительна до:</b> {expire_date_str}\n"
+                        f"📊 <b>Трафик:</b> {used_gb:.2f}GB / {limit_gb}GB\n"
+                        f"🌐 <b>Протокол:</b> {subscription.protocol}\n"
+                        f"💰 <b>Тариф:</b> {subscription.plan_name}\n\n"
+                    )
+                    
+                    if marzban_user.subscription_url:
+                        text += f"🔗 <b>Подписка:</b> <a href=\"{marzban_user.subscription_url}\">получить конфигурацию</a>"
+                else:
+                    # Если не удалось получить данные из Marzban
+                    expire_date = subscription.expires_at
+                    expire_date_str = expire_date.strftime('%Y-%m-%d %H:%M') if expire_date else "Неизвестно"
+                    text = (
+                        f"📱 <b>Ваша подписка</b>\n\n"
+                        f"✅ <b>Статус:</b> Активна\n"
+                        f"📅 <b>Действительна до:</b> {expire_date_str}\n"
+                        f"🌐 <b>Протокол:</b> {subscription.protocol}\n"
+                        f"💰 <b>Тариф:</b> {subscription.plan_name}\n\n"
+                        f"⚠️ <i>Конфигурация временно недоступна. Попробуйте позже.</i>"
+                    )
+            else:
+                # Если нет привязки к Marzban
+                expire_date = subscription.expires_at
+                expire_date_str = expire_date.strftime('%Y-%m-%d %H:%M') if expire_date else "Неизвестно"
+                text = (
+                    f"📱 <b>Ваша подписка</b>\n\n"
+                    f"✅ <b>Статус:</b> Активна\n"
+                    f"📅 <b>Действительна до:</b> {expire_date_str}\n"
+                    f"🌐 <b>Протокол:</b> {subscription.protocol}\n"
+                    f"💰 <b>Тариф:</b> {subscription.plan_name}\n\n"
+                    f"⚠️ <i>Конфигурация готовится...</i>"
+                )
+        
+        keyboard = await get_main_keyboard()
+        
+        await message.answer(
+            text,
+            reply_markup=keyboard,
+            parse_mode=ParseMode.HTML
+        )
+        
+    except Exception as e:
+        logger.error(f"[SUB-999] Ошибка в моей подписке: {format_error_traceback(e)}")
+        await message.answer(
+            "❌ [SUB-999] Произошла ошибка при загрузке подписки.",
+            parse_mode=ParseMode.HTML
+        )
+
+
+@user_router.callback_query(F.data == "show_connection_guide")
+async def show_connection_guide_callback(callback: CallbackQuery):
+    """Показать инструкцию по подключению из inline кнопки"""
+    await callback.answer()
+    try:
+        guide_text = (
+            "📖 <b>Инструкция по подключению</b>\n\n"
+            "Для подключения к VPN вам понадобится специальное приложение-клиент. "
+            "Выберите вашу платформу ниже и установите приложение:\n\n"
+            "<b>🤖 Android</b>\n"
+            "• <a href=\"https://play.google.com/store/apps/details?id=com.happproxy\">Haproxy</a>\n"
+            "• <a href=\"https://play.google.com/store/apps/details?id=com.v2raytun.android\">v2RayTun</a>\n"
+            "• <a href=\"https://play.google.com/store/apps/details?id=dev.hexasoftware.v2box\">V2Box</a>\n\n"
+            "<b>🍎 iOS (iPhone/iPad)</b>\n"
+            "• <a href=\"https://apps.apple.com/ru/app/streisand/id6450534064\">Streisand</a>\n"
+            "• <a href=\"https://apps.apple.com/app/v2raytun/id6476628951\">v2RayTun</a>\n\n"
+            "<b>💻 Windows</b>\n"
+            "• <a href=\"https://github.com/hiddify/hiddify-app/releases/download/v2.5.7/Hiddify-Windows-Setup-x64.exe\">Hiddify</a>\n"
+            "• <a href=\"https://github.com/2dust/v2rayN/releases\">v2rayN</a>\n"
+            "• <a href=\"https://github.com/MatsuriDayo/nekoray/releases\">Nekoray</a>\n\n"
+            "<b>🍏 macOS</b>\n"
+            "• <a href=\"https://apps.apple.com/us/app/v2box-v2ray-client/id1641370535\">V2Box</a>\n"
+            "• <a href=\"https://apps.apple.com/us/app/foxray/id6448898375\">FoXray</a>\n\n"
+            "<b>🚀 Как подключиться?</b>\n"
+            "1. Перейдите в '<b>📱 Моя подписка</b>'\n"
+            "2. Нажмите '<b>🔑 Получить ссылку</b>'\n"
+            "3. Скопируйте ссылку\n"
+            "4. В приложении-клиенте нажмите '+' или 'Добавить конфигурацию'\n"
+            "5. Выберите 'Импорт из буфера обмена'\n\n"
+            "<i>💡 Если у вас возникли проблемы, обратитесь в поддержку!</i>"
+        )
+        
+        await callback.message.answer(
+            guide_text,
+            parse_mode="HTML",
+            disable_web_page_preview=True  # Отключаем превью ссылок
+        )
+        
+    except Exception as e:
+        logger.error(f"[GUIDE-999] Ошибка в инструкции по подключению: {format_error_traceback(e)}")
+        await callback.message.answer(
             "❌ [GUIDE-999] Произошла ошибка при загрузке инструкции.",
             parse_mode="HTML"
         )
@@ -989,7 +1033,7 @@ async def cmd_statistics(message: Message):
         )
 
 
-@user_router.message(F.text == "💬 Поддержка")
+@user_router.message(F.text == "Поддержка")
 async def cmd_support(message: Message):
     """
     Обработчик кнопки "Поддержка"
