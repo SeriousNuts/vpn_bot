@@ -572,7 +572,7 @@ async def my_subscription(message: Message):
 async def support(message: Message, state: FSMContext):
     """Handle support request"""
     await message.answer(
-        f"🆘 **Поддержка**\n\n"
+        f"🆘 <b>Поддержка<b>\n\n"
         f"Вы можете связаться с нашей командой поддержки:\n"
         f"👤 @{settings.support_username}\n\n"
         f"Или опишите вашу проблему ниже, и мы пересылем ее:",

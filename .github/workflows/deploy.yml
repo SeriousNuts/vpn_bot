@@ -60,7 +60,6 @@ jobs:
           # Создаем архив с необходимыми файлами
           tar -czf deploy-files.tar.gz \
             docker-compose.prod.yml \
-            docker-compose.dev.yml \
             .env.example \
             alembic.ini \
             migrations/ \
