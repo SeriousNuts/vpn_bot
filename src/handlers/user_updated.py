@@ -358,13 +358,16 @@ async def process_payment_cryptobot_usdt(callback: CallbackQuery):
     """Обработка выбора оплаты через CryptoBot USDT"""
     try:
         logger.info(f"[USDT-001] Starting USDT payment process for user {callback.from_user.id}")
-
-        # Получаем данные из callback (сохраняем в контексте сообщения)
+        
+        # Получаем данные о тарифе и протоколе из контекста выбора
         # В реальном приложении нужно сохранять данные о тарифе и протоколе
         # Для примера используем значения по умолчанию
-        plan = "1_month"  # Можно получить из контекста или предыдущих шагов
-        protocol = "vless"
-        price = 5.0  # Можно получить из настроек
+        plan = "1_month"  # По умолчанию
+        protocol = "vless"  # По умолчанию
+        
+        from src.core.config import settings
+        usdt_prices = settings.get_prices_for_payment_method("cryptobot_usdt")
+        price = usdt_prices[plan]
         
         logger.info(f"[USDT-002] Payment details: plan={plan}, protocol={protocol}, price={price}")
         
@@ -378,6 +381,13 @@ async def process_payment_cryptobot_usdt(callback: CallbackQuery):
         
         logger.info(f"[USDT-005] User found: {user.id}")
         
+        plan_display_name = {
+            "1_month": "1 месяц",
+            "3_months": "3 месяца", 
+            "6_months": "6 месяцев",
+            "1_year": "1 год"
+        }.get(plan, plan.replace('_', ' ').title())
+        
         # Создаем подписку
         logger.info("[USDT-006] Creating subscription")
         logger.info(f"user is {user.__dict__}")
@@ -385,7 +395,7 @@ async def process_payment_cryptobot_usdt(callback: CallbackQuery):
             user_id=user.id,
             plan_name=plan,
             price=price,
-            duration_days=30,  # Для 1 месяца
+            duration_days=get_duration_days(plan),
             status=SubscriptionStatus.PENDING,
             protocol=protocol
         )
