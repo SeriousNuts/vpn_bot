@@ -50,7 +50,7 @@ async def main() -> None:
     """Запуск бота в режиме webhook"""
     bot, dp = init_bot()
     # Include routers
-    dp.include_router(user_router)
+    #dp.include_router(user_router)
     dp.include_router(user_updated_router)
     dp.include_router(admin_router)
 

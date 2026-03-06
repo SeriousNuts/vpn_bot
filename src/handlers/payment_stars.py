@@ -3,61 +3,78 @@
 """
 
 import logging
-from typing import Dict, Any, List
 
-from aiogram import Router, F, types
-from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, SuccessfulPayment, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram import Router, F
 from aiogram.enums import ParseMode
+from aiogram.filters import Command
+from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
-from src.services.payment_stars import stars_payment_service
-from src.services.notification import NotificationService
 from src.keyboards.payment import get_payment_plans_keyboard, get_payment_history_keyboard
+from src.services.payment_stars import stars_payment_service
+from src.models import Subscription
+from utils.format_error import format_error_traceback
 
 logger = logging.getLogger(__name__)
 
 # Создаем роутер
 payment_stars_router = Router()
 
-async def process_stars_payment(callback: CallbackQuery, payment, plan_display_name: str, protocol: str, price: float):
+async def process_stars_payment(callback: CallbackQuery, payment, plan_display_name: str, protocol: str):
     """Обработка платежа через Telegram Stars"""
     try:
         # Создаем invoice для оплаты через Stars
-        invoice_link = await stars_payment_service.create_payment_invoice(
-            payment_id=payment.id,
-            amount=price,
-            description=f"VPN Подписка - {plan_display_name}",
-            user_id=callback.from_user.id
+        plan_name = "1_month"  # значение по умолчанию (существует в payment_stars.py)
+        
+        # Безопасно получаем plan_name из payment
+        try:
+            if payment and hasattr(payment, 'subscription_id') and payment.subscription_id:
+                # Если есть subscription_id, пробуем получить подписку
+                from src.core.database import subscription_repo
+                subscription = await subscription_repo.db.get_by_id(Subscription, payment.subscription_id)
+                if subscription and hasattr(subscription, 'plan_name'):
+                    plan_name = subscription.plan_name
+        except Exception as sub_error:
+            logger.warning(f"Не удалось получить подписку для plan_name: {sub_error}")
+            # Оставляем plan_name = "basic"
+        
+        invoice_result = await stars_payment_service.create_stars_invoice(
+            user_id=callback.from_user.id,
+            plan_name=plan_name,
+            description=f"VPN Подписка - {plan_display_name}"
         )
         
-        if invoice_link:
+        if invoice_result and invoice_result.get("invoice_data"):
+            # Отправляем invoice напрямую
+            await callback.bot.send_invoice(
+                chat_id=callback.from_user.id,
+                **invoice_result["invoice_data"]
+            )
+            
+            # Показываем сообщение с информацией
             await callback.message.edit_text(
                 f"✅ Конфигурация сохранена!\n\n"
                 f"📋 **Детали заказа:**\n"
                 f"Тариф: {plan_display_name}\n"
                 f"Протокол: {protocol.upper()}\n"
-                f"Цена: {price} ⭐\n\n"
+                f"Цена: {invoice_result['price_in_stars']} ⭐\n\n"
                 f"💳 **Детали оплаты:**\n"
-                f"ID платежа: #{payment.id}\n"
+                f"ID платежа: #{invoice_result['payment_id']}\n"
                 f"Способ оплаты: Telegram Stars\n\n"
-                f"🔗 **Нажмите для оплаты:**\n"
-                f"[Оплатить Stars]({invoice_link})\n\n"
-                f"⏰ Оплата будет обработана автоматически",
+                f"⏰ Оплата будет обработана автоматически после успешной оплаты",
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="⭐ Оплатить", url=invoice_link)],
-                    [InlineKeyboardButton(text="🔄 Проверить оплату", callback_data=f"check_stars_payment_{payment.id}")]
+                    [InlineKeyboardButton(text="🔄 Проверить оплату", callback_data=f"check_stars_payment_{invoice_result['payment_id']}")]
                 ]),
                 parse_mode="Markdown"
             )
         else:
             await callback.message.edit_text(
-                "❌ Не удалось создать счет для оплаты через Stars. Попробуйте другой способ."
+                "❌ [STARS-001] Не удалось создать счет для оплаты через Stars. Попробуйте другой способ."
             )
             
     except Exception as e:
-        logger.error(f"❌ Ошибка создания платежа через Stars: {format_error_traceback(e)}")
+        logger.error(f"[STARS-002] Ошибка создания платежа через Stars: {format_error_traceback(e)}")
         await callback.message.edit_text(
-            "❌ Произошла ошибка при создании платежа. Попробуйте позже."
+            "❌ [STARS-002] Произошла ошибка при создании платежа. Попробуйте позже."
         )
 
 
@@ -83,8 +100,8 @@ async def check_stars_payment_status(callback: CallbackQuery):
         )
         
     except Exception as e:
-        logger.error(f"❌ Ошибка проверки оплаты Stars: {format_error_traceback(e)}")
-        await callback.answer("❌ Произошла ошибка при проверке оплаты", show_alert=True)
+        logger.error(f"[STARS-003] Ошибка проверки оплаты Stars: {format_error_traceback(e)}")
+        await callback.answer("❌ [STARS-003] Произошла ошибка при проверке оплаты", show_alert=True)
 
 @payment_stars_router.message(Command("buy_stars"))
 async def cmd_buy_stars(message: Message):
@@ -97,7 +114,7 @@ async def cmd_buy_stars(message: Message):
         
         if not plans:
             await message.answer(
-                "❌ К сожалению, в данный момент нет доступных тарифов для оплаты звёздами.\n"
+                "❌ [STARS-004] К сожалению, в данный момент нет доступных тарифов для оплаты звёздами.\n"
                 "Попробуйте позже или свяжитесь с поддержкой.",
                 parse_mode=ParseMode.HTML
             )
@@ -130,9 +147,9 @@ async def cmd_buy_stars(message: Message):
         )
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в команде /buy_stars: {format_error_traceback(e)}")
+        logger.error(f"[STARS-005] Ошибка в команде /buy_stars: {format_error_traceback(e)}")
         await message.answer(
-            "❌ Произошла ошибка. Пожалуйста, попробуйте позже.",
+            "❌ [STARS-005] Произошла ошибка. Пожалуйста, попробуйте позже.",
             parse_mode=ParseMode.HTML
         )
 
@@ -154,7 +171,7 @@ async def callback_buy_plan(callback: CallbackQuery):
         
         if not invoice_data:
             await callback.answer(
-                "❌ Не удалось создать платеж. Попробуйте позже. Нет инвойса",
+                "❌ [STARS-006] Не удалось создать платеж. Попробуйте позже. Нет инвойса",
                 show_alert=True
             )
             return
@@ -168,9 +185,9 @@ async def callback_buy_plan(callback: CallbackQuery):
         await callback.answer()
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в callback buy_plan: {format_error_traceback(e)}")
+        logger.error(f"[STARS-007] Ошибка в callback buy_plan: {format_error_traceback(e)}")
         await callback.answer(
-            "❌ Произошла ошибка. Попробуйте позже.",
+            "❌ [STARS-007] Произошла ошибка. Попробуйте позже.",
             show_alert=True
         )
 
@@ -189,14 +206,14 @@ async def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
         else:
             await pre_checkout_query.answer(
                 ok=False,
-                error_message="❌ Проверка платежа не пройдена. Попробуйте снова."
+                error_message="❌ [STARS-008] Проверка платежа не пройдена. Попробуйте снова."
             )
             
     except Exception as e:
-        logger.error(f"❌ Ошибка обработки pre-checkout: {format_error_traceback(e)}")
+        logger.error(f"[STARS-009] Ошибка обработки pre-checkout: {format_error_traceback(e)}")
         await pre_checkout_query.answer(
             ok=False,
-            error_message="❌ Произошла ошибка. Попробуйте позже."
+            error_message="❌ [STARS-009] Произошла ошибка. Попробуйте позже."
         )
 
 
@@ -224,15 +241,15 @@ async def process_successful_payment(message: Message):
             )
         else:
             await message.answer(
-                "❌ Произошла ошибка при активации подписки.\n"
+                "❌ [STARS-010] Произошла ошибка при активации подписки.\n"
                 "Пожалуйста, свяжитесь с поддержкой.",
                 parse_mode=ParseMode.HTML
             )
             
     except Exception as e:
-        logger.error(f"❌ Ошибка обработки успешного платежа: {format_error_traceback(e)}")
+        logger.error(f"[STARS-011] Ошибка обработки успешного платежа: {format_error_traceback(e)}")
         await message.answer(
-            "❌ Произошла ошибка. Пожалуйста, свяжитесь с поддержкой.",
+            "❌ [STARS-011] Произошла ошибка. Пожалуйста, свяжитесь с поддержкой.",
             parse_mode=ParseMode.HTML
         )
 
@@ -288,9 +305,9 @@ async def cmd_payment_history(message: Message):
         )
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в команде /payment_history: {format_error_traceback(e)}")
+        logger.error(f"[STARS-012] Ошибка в команде /payment_history: {format_error_traceback(e)}")
         await message.answer(
-            "❌ Произошла ошибка при загрузке истории платежей.",
+            "❌ [STARS-012] Произошла ошибка при загрузке истории платежей.",
             parse_mode=ParseMode.HTML
         )
 
@@ -341,9 +358,9 @@ async def callback_refresh_payment_history(callback: CallbackQuery):
         await callback.answer("🔄 История платежей обновлена")
         
     except Exception as e:
-        logger.error(f"❌ Ошибка обновления истории платежей: {format_error_traceback(e)}")
+        logger.error(f"[STARS-013] Ошибка обновления истории платежей: {format_error_traceback(e)}")
         await callback.answer(
-            "❌ Произошла ошибка при обновлении.",
+            "❌ [STARS-013] Произошла ошибка при обновлении.",
             show_alert=True
         )
 
@@ -368,9 +385,9 @@ async def callback_back_to_main(callback: CallbackQuery):
         await callback.answer()
         
     except Exception as e:
-        logger.error(f"❌ Ошибка возврата в главное меню: {format_error_traceback(e)}")
+        logger.error(f"[STARS-014] Ошибка возврата в главное меню: {format_error_traceback(e)}")
         await callback.answer(
-            "❌ Произошла ошибка.",
+            "❌ [STARS-014] Произошла ошибка.",
             show_alert=True
         )
 
@@ -414,8 +431,8 @@ async def cmd_stars_info(message: Message):
         )
         
     except Exception as e:
-        logger.error(f"❌ Ошибка в команде /stars_info: {format_error_traceback(e)}")
+        logger.error(f"[STARS-015] Ошибка в команде /stars_info: {format_error_traceback(e)}")
         await message.answer(
-            "❌ Произошла ошибка. Попробуйте позже.",
+            "❌ [STARS-015] Произошла ошибка. Попробуйте позже.",
             parse_mode=ParseMode.HTML
         )

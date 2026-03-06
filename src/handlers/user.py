@@ -32,18 +32,33 @@ class SupportStates(StatesGroup):
     message = State()
 
 # Keyboards
-def get_main_keyboard() -> ReplyKeyboardMarkup:
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📱 Моя подписка")],
-            [KeyboardButton(text="💰 Купить подписку")],
-            [KeyboardButton(text="⚙️ Настройки")],
-            [KeyboardButton(text="🆘 Поддержка")],
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=True
-    )
-    return keyboard
+async def get_main_keyboard() -> ReplyKeyboardMarkup:
+    """Единая функция для создания главного меню"""
+    try:
+        from src.handlers.payment_integration import update_main_keyboard_with_payments
+        return await update_main_keyboard_with_payments()
+    except:
+        # Fallback если payment_integration недоступен
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="📱 Моя подписка"),
+                    KeyboardButton(text="💰 Купить подписку")
+                ],
+                [
+                    KeyboardButton(text="💳 История платежей"),
+                    KeyboardButton(text="📊 Статистика")
+                ],
+                [
+                    KeyboardButton(text="💬 Поддержка"),
+                    KeyboardButton(text="⚙️ Настройки")
+                ]
+            ],
+            resize_keyboard=True,
+            input_field_placeholder="Выберите действие...",
+            one_time_keyboard=False
+        )
+        return keyboard
 
 def get_plan_display_name(plan_key: str) -> str:
     """Возвращает отображаемое имя плана по ключу"""
@@ -123,7 +138,7 @@ async def cmd_start(message: Message, state: FSMContext):
                 f"Выберите опцию для начала работы:"
             )
             
-            keyboard = get_main_keyboard()
+            keyboard = await get_main_keyboard()
             await message.answer(welcome_text, reply_markup=keyboard)
         else:
             # Existing user
@@ -132,12 +147,12 @@ async def cmd_start(message: Message, state: FSMContext):
                 keyboard = get_admin_keyboard()
                 await message.answer("👋 Добро пожаловать, Администратор!", reply_markup=keyboard)
             else:
-                keyboard = get_main_keyboard()
+                keyboard = await get_main_keyboard()
                 await message.answer(f"👋 С возвращением!", reply_markup=keyboard)
                 
     except Exception as e:
-        logger.error(f"Error in cmd_start: {format_error_traceback(e)}")
-        await message.answer("❌ Произошла ошибка. Попробуйте позже.")
+        logger.error(f"[USER-001] Error in cmd_start: {format_error_traceback(e)}")
+        await message.answer("❌ [USER-001] Произошла ошибка. Попробуйте позже.")
 
 @user_router.message(F.text == "💰 Купить подписку")
 async def buy_subscription(message: Message, state: FSMContext):
@@ -220,7 +235,7 @@ async def process_payment_stars(callback: CallbackQuery, state: FSMContext):
     
     # Перенаправляем на обработчик payment_stars
     from src.handlers.payment_stars import process_stars_payment
-    await process_stars_payment(callback, payment, plan_display_name, protocol, price)
+    await process_stars_payment(callback, payment, plan_display_name, protocol)
     
     await state.clear()
 
@@ -263,7 +278,7 @@ async def process_payment_cryptobot_usdt(callback: CallbackQuery, state: FSMCont
         payment_id=payment.id
     )
     print(f"payment_info: {payment_info}")
-    if payment_info and payment_info.get('ok') and payment_info.get('pay_url'):
+    if payment_info and payment_info.get('pay_url'):
             # Update payment with external ID
             if payment_info.get('invoice_id'):
                 print(f"Updating payment {payment.id} with external ID {payment_info['invoice_id']}")
@@ -297,7 +312,7 @@ async def process_payment_cryptobot_usdt(callback: CallbackQuery, state: FSMCont
             )
     else:
         await callback.message.edit_text(
-            "❌ Не удалось создать платеж. Попробуйте позже."
+            "❌ [USER-002] Не удалось создать платеж. Попробуйте позже."
         )
     
     await state.clear()
@@ -380,7 +395,7 @@ async def process_payment_cryptobot_ton(callback: CallbackQuery, state: FSMConte
         else:
             print(f"Failed to create TON payment: {payment_info}")
             await callback.message.edit_text(
-                "❌ Не удалось создать платеж. Попробуйте позже.\n\n"
+                "❌ [USER-003] Не удалось создать платеж. Попробуйте позже.\n\n"
                 f"Детали ошибки: {payment_info if payment_info else 'No response from API'}",
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
@@ -390,7 +405,7 @@ async def process_payment_cryptobot_ton(callback: CallbackQuery, state: FSMConte
     except Exception as e:
         print(f"Exception during TON payment creation: {format_error_traceback(e)}")
         await callback.message.edit_text(
-            "❌ Произошла ошибка при создании платежа. Попробуйте позже.",
+            "❌ [USER-004] Произошла ошибка при создании платежа. Попробуйте позже.",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
             ])
@@ -407,8 +422,8 @@ async def check_payment_status(callback: CallbackQuery):
         payment = await payment_repo.get_payment(payment_id)
         
         if not payment:
-            logger.error(f"❌ Платеж не найден в БД: {payment_id}")
-            await callback.answer("❌ Информация о платеже не найдена", show_alert=True)
+            logger.error(f"[USER-005] Платеж не найден в БД: {payment_id}")
+            await callback.answer("❌ [USER-005] Информация о платеже не найдена", show_alert=True)
             return
         
         # Логируем информацию о платеже для диагностики
@@ -441,7 +456,7 @@ async def check_payment_status(callback: CallbackQuery):
                     )
                     await callback.answer("✅ Платеж успешно обработан!")
                 else:
-                    await callback.answer("❌ Ошибка активации подписки",reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    await callback.answer("❌ [USER-006] Ошибка активации подписки",reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                             [InlineKeyboardButton(text="🆘 Поддержка", callback_data="support")]
                         ]))
             else:
@@ -460,12 +475,12 @@ async def check_payment_status(callback: CallbackQuery):
                 logger.info(f"🔄 Проверяем статус платежа CryptoBot: {payment_id}")
                 await callback.answer("🔄 Проверка статуса платежа CryptoBot...", show_alert=True)
             else:
-                logger.error(f"❌ Неизвестный метод оплаты: {payment.payment_method}")
-                await callback.answer("❌ Неизвестный метод оплаты", show_alert=True)
+                logger.error(f"[USER-007] Неизвестный метод оплаты: {payment.payment_method}")
+                await callback.answer("❌ [USER-007] Неизвестный метод оплаты", show_alert=True)
                 
     except Exception as e:
-        logger.error(f"❌ Ошибка при проверке платежа {payment_id}: {format_error_traceback(e)}")
-        await callback.answer("❌ Ошибка при проверке платежа", show_alert=True)
+        logger.error(f"[USER-008] Ошибка при проверке платежа {payment_id}: {format_error_traceback(e)}")
+        await callback.answer("❌ [USER-008] Ошибка при проверке платежа", show_alert=True)
 
 async def activate_subscription_after_payment(payment) -> bool:
     """Активация подписки после успешной оплаты"""
@@ -473,7 +488,7 @@ async def activate_subscription_after_payment(payment) -> bool:
         # Получаем информацию о подписке
         subscription = await subscription_repo.db.get_by_id(Subscription, payment.subscription_id)
         if not subscription:
-            logger.error(f"❌ Подписка не найдена: {payment.subscription_id}")
+            logger.error(f"[USER-009] Подписка не найдена: {payment.subscription_id}")
             return False
         
         # Активируем подписку в Marzban
@@ -490,13 +505,13 @@ async def activate_subscription_after_payment(payment) -> bool:
             SubscriptionStatus.ACTIVE
         )
         if not marzban_user:
-            logger.error("Не удалось создать пользователя в marzban")
+            logger.error("[USER-010] Не удалось создать пользователя в marzban")
             return False
         logger.info(f"✅ Подписка активирована: {subscription.id}")
         return True
         
     except Exception as e:
-        logger.error(f"❌ Ошибка активации подписки: {format_error_traceback(e)}")
+        logger.error(f"[USER-011] Ошибка активации подписки: {format_error_traceback(e)}")
         return False
 
 @user_router.message(F.text == "📱 Моя подписка")
@@ -508,7 +523,7 @@ async def my_subscription(message: Message):
         
         if not user:
             await message.answer(
-                "❌ Пользователь не найден. Перезапустите бота командой /start"
+                "❌ [USER-012] Пользователь не найден. Перезапустите бота командой /start"
             )
             return
         
@@ -517,7 +532,7 @@ async def my_subscription(message: Message):
         
         if not active_sub:
             await message.answer(
-                "❌ У вас нет активной подписки.\n"
+                "❌ [USER-013] У вас нет активной подписки.\n"
                 "Нажмите '💰 Купить подписку' для начала!"
             )
             return
@@ -550,8 +565,8 @@ async def my_subscription(message: Message):
         await message.answer(subscription_text)
         
     except Exception as e:
-        logger.error(f"Error in my_subscription: {format_error_traceback(e)}")
-        await message.answer("❌ Не удалось загрузить информацию о подписке.")
+        logger.error(f"[USER-014] Error in my_subscription: {format_error_traceback(e)}")
+        await message.answer("❌ [USER-014] Не удалось загрузить информацию о подписке.")
 
 @user_router.message(F.text == "🆘 Поддержка")
 async def support(message: Message, state: FSMContext):
@@ -573,7 +588,7 @@ async def process_support_message(message: Message, state: FSMContext):
     """Process support message"""
     if message.text == "🔙 Главное меню":
         await state.clear()
-        await message.answer("🔙 Главное меню", reply_markup=get_main_keyboard())
+        await message.answer("🔙 Главное меню", reply_markup=await get_main_keyboard())
         return
     
     # Forward message to admin
@@ -590,13 +605,13 @@ async def process_support_message(message: Message, state: FSMContext):
         await message.answer("✅ Your message has been sent to our support team. We'll respond shortly.")
     except Exception as e:
         print(f"Failed to forward support message: {format_error_traceback(e)}")
-        await message.answer("❌ Failed to send message. Please try again later.")
+        await message.answer("❌ [USER-015] Failed to send message. Please try again later.")
     
     await state.clear()
-    await message.answer("🔙 Главное меню", reply_markup=get_main_keyboard())
+    await message.answer("🔙 Главное меню", reply_markup=await get_main_keyboard())
 
 @user_router.message(F.text == "🔙 Главное меню")
 async def main_menu(message: Message, state: FSMContext):
     """Return to 🔙 Главное меню"""
     await state.clear()
-    await message.answer("🔙 Главное меню", reply_markup=get_main_keyboard())
+    await message.answer("🔙 Главное меню", reply_markup=await get_main_keyboard())

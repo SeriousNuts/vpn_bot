@@ -310,7 +310,7 @@ class PaymentProcessor:
         print(f"Created USDT payment on payment processor: {invoice}")
         if invoice and invoice.get('ok'):
             return {
-                "invoice_id": invoice.get("result").get("id"),
+                "invoice_id": str(invoice.get("result").get("invoice_id")),
                 "pay_url": invoice.get("result").get("pay_url"),
                 "amount": invoice.get("result").get("amount"),
                 "asset": invoice.get("result").get("asset"),

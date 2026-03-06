@@ -32,19 +32,23 @@ async def update_main_keyboard_with_payments():
         keyboard=[
             [
                 KeyboardButton(text="📱 Моя подписка"),
-                KeyboardButton(text="💎 Купить подписку")
+                KeyboardButton(text="💰 Купить подписку")
             ],
             [
                 KeyboardButton(text="💳 История платежей"),
                 KeyboardButton(text="📊 Статистика")
             ],
             [
-                KeyboardButton(text="💬 Поддержка"),
+                KeyboardButton(text="� Инструкция по подключению"),
+                KeyboardButton(text="�💬 Поддержка")
+            ],
+            [
                 KeyboardButton(text="⚙️ Настройки")
             ]
         ],
         resize_keyboard=True,
-        input_field_placeholder="Выберите действие..."
+        input_field_placeholder="Выберите действие...",
+        one_time_keyboard=False  # Сохраняем меню
     )
     
     return keyboard

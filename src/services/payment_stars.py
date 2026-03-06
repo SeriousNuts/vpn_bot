@@ -3,16 +3,16 @@
 """
 
 import logging
-from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta
+from typing import Dict, Any, List
 
-from aiogram.types import PreCheckoutQuery, SuccessfulPayment, LabeledPrice
 from aiogram.enums import Currency
+from aiogram.types import PreCheckoutQuery, SuccessfulPayment, LabeledPrice
 
-from src.core.config import settings
-from src.core.database import payment_repo, subscription_repo, user_repo
-from src.models import Payment, User, Subscription
-from src.enums import PaymentStatus, SubscriptionStatus
+from src.core.database import payment_repo, user_repo
+from src.core.database import subscription_repo
+from src.enums import PaymentStatus
+from src.enums import SubscriptionStatus
+from src.models import Payment
 from src.services.notification import NotificationService
 from utils.format_error import format_error_traceback
 
@@ -27,13 +27,9 @@ class TelegramStarsPaymentService:
     def __init__(self):
         self.notification_service = NotificationService()
         
-        # Цены в звёздах для разных тарифов
-        self.plans_prices = {
-            "1_month": 50,    # 50 звёзд за 1 месяц
-            "3_months": 135,   # 135 звёзд за 3 месяца (10% скидка)
-            "6_months": 250,   # 250 звёзд за 6 месяцев (17% скидка)
-            "1_year": 450,     # 450 звёзд за 1 год (25% скидка)
-        }
+        # Получаем цены из настроек
+        from src.core.config import settings
+        self.plans_prices = settings.get_prices_for_payment_method("telegram_stars")
         
         # Длительность подписок в днях
         self.plans_duration = {
@@ -48,7 +44,7 @@ class TelegramStarsPaymentService:
         user_id: int, 
         plan_name: str, 
         description: str = None
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, Any] | None:
         """
         Создание инвойса для оплаты звёздами
         
@@ -59,25 +55,45 @@ class TelegramStarsPaymentService:
             
         Returns:
             Dict с параметрами для отправки инвойса
+            None в случае ошибки
         """
         try:
+            user = await user_repo.get_user_by_telegram_id(user_id)
+            if not user:
+                logger.error(f"Ошибка при создание start invoice пользователя {user_id} не существует")
+                return None
             # Проверяем существование тарифа
             if plan_name not in self.plans_prices:
-                logging.error(f"❌ Неизвестный тариф: {plan_name}")
+                logger.error(f"❌ Неизвестный тариф: {plan_name}")
                 return None
             
             price_in_stars = self.plans_prices[plan_name]
             duration_days = self.plans_duration[plan_name]
             
+            # Сначала создаем подписку
+
+            
+            subscription = await subscription_repo.create_subscription(
+                user_id=user.id,
+                plan_name=plan_name,
+                price=price_in_stars,
+                duration_days=duration_days,
+                status=SubscriptionStatus.PENDING,
+                protocol="vless"  # По умолчанию
+            )
+            
+            if not subscription:
+                logger.error(f"❌ Не удалось создать подписку для пользователя {user_id}")
+                return None
+            
             # Создаем запись о платеже в базе данных
             payment = await payment_repo.create_payment(
-                user_id=user_id,
+                user_id=user.id,
                 amount=price_in_stars,
                 currency="XTR",  # Telegram Stars
                 payment_method="telegram_stars",
-                plan_name=plan_name,
-                status=PaymentStatus.PENDING,
-                duration_days=duration_days
+                subscription_id=subscription.id,
+                description=f"VPN Подписка - {plan_name}"
             )
             
             if not payment:
@@ -92,7 +108,7 @@ class TelegramStarsPaymentService:
             prices = [
                 LabeledPrice(
                     label=f"VPN подписка {plan_name}",
-                    amount=price_in_stars * 100  # Telegram использует копейки/центы
+                    amount=price_in_stars
                 )
             ]
             
@@ -101,7 +117,7 @@ class TelegramStarsPaymentService:
                 "description": description,
                 "payload": str(payment.id),  # ID платежа как payload
                 "provider_token": "",  # Пусто для Telegram Stars
-                "currency": Currency.XTR,  # Telegram Stars
+                "currency": "XTR",  # Telegram Stars
                 "prices": prices,
                 "need_name": False,
                 "need_phone_number": False,

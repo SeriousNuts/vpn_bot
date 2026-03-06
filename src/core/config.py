@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     # Payment Configuration
     subscription_prices: Dict[str, float] = Field(..., validation_alias="SUBSCRIPTION_PRICES")
     
+    # Отдельные цены для каждого способа оплаты
+    usdt_prices: Optional[Dict[str, float]] = Field(default=None, validation_alias="USDT_PRICES")
+    ton_prices: Optional[Dict[str, float]] = Field(default=None, validation_alias="TON_PRICES")
+    stars_prices: Optional[Dict[str, int]] = Field(default=None, validation_alias="STARS_PRICES")
+    
     # Additional price configurations (optional)
     subscription_1_month: Optional[float] = Field(default=None, validation_alias="SUBSCRIPTION_1_MONTH")
     subscription_3_months: Optional[float] = Field(default=None, validation_alias="SUBSCRIPTION_3_MONTHS")
@@ -54,6 +59,7 @@ class Settings(BaseSettings):
         super().__init__(**kwargs)
         # Объединяем цены из разных источников
         self._merge_subscription_prices()
+        self._merge_payment_method_prices()
     
     def _merge_subscription_prices(self):
         """Объединяет цены из SUBSCRIPTION_PRICES и отдельных переменных"""
@@ -77,6 +83,37 @@ class Settings(BaseSettings):
         
         # Обновляем основной словарь
         self.subscription_prices = merged_prices
+    
+    def _merge_payment_method_prices(self):
+        """Объединяет цены для каждого способа оплаты с базовыми ценами"""
+        # USDT цены - если не указаны, используем базовые
+        if not self.usdt_prices:
+            self.usdt_prices = self.subscription_prices.copy()
+        
+        # TON цены - если не указаны, используем базовые
+        if not self.ton_prices:
+            self.ton_prices = self.subscription_prices.copy()
+        
+        # Stars цены - если не указаны, конвертируем базовые из USD в Stars
+        if not self.stars_prices:
+            # Примерная конвертация: 1 USD = 5 Stars (настраиваемый коэффициент)
+            usd_to_stars_rate = 5
+            self.stars_prices = {
+                plan: int(price * usd_to_stars_rate) 
+                for plan, price in self.subscription_prices.items()
+            }
+    
+    def get_prices_for_payment_method(self, payment_method: str) -> Dict[str, float]:
+        """Возвращает цены для указанного способа оплаты"""
+        if payment_method == "cryptobot_usdt":
+            return self.usdt_prices
+        elif payment_method == "cryptobot_ton":
+            return self.ton_prices
+        elif payment_method == "telegram_stars":
+            return self.stars_prices
+        else:
+            # Fallback на базовые цены
+            return self.subscription_prices
 
     @classmethod
     def parse_expiry_days(cls, v):
