@@ -11,6 +11,7 @@ from src.handlers.admin import admin_router
 from src.handlers.user import user_router
 from src.handlers.user_updated import user_router as user_updated_router
 from src.services.notification import NotificationService
+from src.services.crypto_pay import init_crypto_pay_service
 
 
 
@@ -47,6 +48,11 @@ async def main() -> None:
     if settings.init_db:
         await init_db()
         logging.info("Database initialized")
+    
+    # Инициализация Crypto Pay сервиса
+    crypto_service = init_crypto_pay_service(settings.cryptobot_token, settings.cryptobot_url)
+    logging.info("Crypto Pay service initialized")
+    
     """Запуск бота в режиме webhook"""
     bot, dp = init_bot()
     # Include routers
