@@ -436,7 +436,7 @@ class PaymentRepository:
         """Update payment status"""
         update_data = {"status": status}
         if invoice_id:
-            update_data["payment_id"] = invoice_id
+            update_data["payment_id"] = str(invoice_id)  # Преобразуем в строку
         if status == "completed":
             from datetime import datetime
             update_data["completed_at"] = datetime.now()

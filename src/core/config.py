@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     # CryptoBot Configuration
     cryptobot_token: str = Field(..., validation_alias="CRYPTOBOT_TOKEN")
     cryptobot_url: str = Field(..., validation_alias="CRYPTOBOT_URL")
+    
+    # Crypto Pay API Configuration
+    crypto_pay_accepted_assets: str = Field(default="USDT,TON,BTC,ETH,LTC,BNB,TRX,USDC", validation_alias="CRYPTO_PAY_ACCEPTED_ASSETS")
+    crypto_pay_swap_to: Optional[str] = Field(default="USDT", validation_alias="CRYPTO_PAY_SWAP_TO")
+    crypto_pay_expires_in: int = Field(default=900, validation_alias="CRYPTO_PAY_EXPIRES_IN")
 
     # Payment Configuration
     subscription_prices: Dict[str, float] = Field(..., validation_alias="SUBSCRIPTION_PRICES")

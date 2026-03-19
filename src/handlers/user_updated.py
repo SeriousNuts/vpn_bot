@@ -329,8 +329,7 @@ def get_payment_methods_keyboard():
     """Формирует клавиатуру со способами оплаты"""
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⭐ Telegram Stars", callback_data="payment_stars")],
-        [InlineKeyboardButton(text="💳 CryptoBot - USDT", callback_data="payment_cryptobot_usdt")],
-        [InlineKeyboardButton(text="🔷 CryptoBot - TON", callback_data="payment_cryptobot_ton")],
+        [InlineKeyboardButton(text="💳 Криптовалюта (USDT, TON, BTC, ETH...)", callback_data="payment_crypto_pay")],
         [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")],
     ])
     return keyboard
@@ -354,33 +353,19 @@ async def process_payment_stars(callback: CallbackQuery):
         await callback.answer("❌ [STARS-999] Произошла ошибка", show_alert=True)
 
 
-@user_router.callback_query(F.data == "payment_cryptobot_usdt")
-async def process_payment_cryptobot_usdt(callback: CallbackQuery):
-    """Обработка выбора оплаты через CryptoBot USDT"""
+@user_router.callback_query(F.data == "payment_crypto_pay")
+async def process_payment_crypto_pay(callback: CallbackQuery):
+    """Обработка выбора оплаты через Crypto Pay API (любая криптовалюта)"""
     try:
-        logger.info(f"[USDT-001] Starting USDT payment process for user {callback.from_user.id}")
+        logger.info(f"[CRYPTO-001] Starting Crypto Pay payment process for user {callback.from_user.id}")
         
         # Получаем данные о тарифе и протоколе из контекста выбора
-        # В реальном приложении нужно сохранять данные о тарифе и протоколе
-        # Для примера используем значения по умолчанию
         plan = "1_month"  # По умолчанию
         protocol = "vless"  # По умолчанию
         
         from src.core.config import settings
-        usdt_prices = settings.get_prices_for_payment_method("cryptobot_usdt")
-        price = usdt_prices[plan]
-        
-        logger.info(f"[USDT-002] Payment details: plan={plan}, protocol={protocol}, price={price}")
-        
-        # Получаем пользователя
-        logger.info(f"[USDT-003] Getting user {callback.from_user.id}")
-        user = await user_repo.get_user_by_telegram_id(callback.from_user.id)
-        if not user:
-            logger.error(f"[USDT-004] User {callback.from_user.id} not found")
-            await callback.answer("❌ [USDT-004] Пользователь не найден", show_alert=True)
-            return
-        
-        logger.info(f"[USDT-005] User found: {user.id}")
+        crypto_prices = settings.subscription_prices  # Базовые цены в USD
+        price = crypto_prices[plan]
         
         plan_display_name = {
             "1_month": "1 месяц",
@@ -389,9 +374,20 @@ async def process_payment_cryptobot_usdt(callback: CallbackQuery):
             "1_year": "1 год"
         }.get(plan, plan.replace('_', ' ').title())
         
+        logger.info(f"[CRYPTO-002] Payment details: plan={plan}, protocol={protocol}, price=${price}")
+        
+        # Получаем пользователя
+        logger.info(f"[CRYPTO-003] Getting user {callback.from_user.id}")
+        user = await user_repo.get_user_by_telegram_id(callback.from_user.id)
+        if not user:
+            logger.error(f"[CRYPTO-004] User {callback.from_user.id} not found")
+            await callback.answer("❌ [CRYPTO-004] Пользователь не найден", show_alert=True)
+            return
+        
+        logger.info(f"[CRYPTO-005] User found: {user.id}")
+        
         # Создаем подписку
-        logger.info("[USDT-006] Creating subscription")
-        logger.info(f"user is {user.__dict__}")
+        logger.info("[CRYPTO-006] Creating subscription")
         subscription = await subscription_repo.create_subscription(
             user_id=user.id,
             plan_name=plan,
@@ -402,66 +398,80 @@ async def process_payment_cryptobot_usdt(callback: CallbackQuery):
         )
         
         if not subscription:
-            logger.error("[USDT-007] Failed to create subscription")
+            logger.error("[CRYPTO-007] Failed to create subscription")
             await callback.message.edit_text(
-                "❌ [USDT-007] Не удалось создать подписку. Попробуйте позже.",
+                "❌ [CRYPTO-007] Не удалось создать подписку. Попробуйте позже.",
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
                 ])
             )
             return
         
-        logger.info(f"[USDT-008] Subscription created: {subscription.id}")
+        logger.info(f"[CRYPTO-008] Subscription created: {subscription.id}")
         
-        plan_display_name = "1 месяц"
-        
-        # Создаем платеж в базе данных
-        logger.info("[USDT-009] Creating payment record")
+        # Создаем платеж
+        logger.info("[CRYPTO-009] Creating payment record")
         payment = await payment_repo.create_payment(
             user_id=user.id,
             payment_id=None,  # Обновится после создания invoice
             subscription_id=subscription.id,
             amount=price,
-            payment_method="cryptobot_usdt",
+            payment_method="crypto_pay",
             description=f"VPN Подписка - {plan_display_name}"
         )
         
         if not payment:
-            logger.error("[USDT-010] Failed to create payment record")
+            logger.error("[CRYPTO-010] Failed to create payment record")
             await callback.message.edit_text(
-                "❌ [USDT-010] Не удалось создать запись о платеже. Попробуйте позже.",
+                "❌ [CRYPTO-010] Не удалось создать запись о платеже. Попробуйте позже.",
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
                 ])
             )
             return
         
-        logger.info(f"[USDT-011] Payment record created: {payment.id}")
+        logger.info(f"[CRYPTO-011] Payment record created: {payment.id}")
         
-        # Создаем платеж через CryptoBot
-        logger.info("[USDT-012] Creating CryptoBot invoice")
-        payment_info = await payment_processor.create_payment_usdt(
+        # Создаем инвойс через Crypto Pay API
+        logger.info("[CRYPTO-012] Creating Crypto Pay invoice")
+        from src.services.crypto_pay import get_crypto_pay_service
+        
+        crypto_service = get_crypto_pay_service()
+        if not crypto_service:
+            logger.error("[CRYPTO-013] Crypto Pay service not initialized")
+            await callback.message.edit_text(
+                "❌ [CRYPTO-013] Сервис крипто-оплаты недоступен. Попробуйте другой способ оплаты.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
+                ])
+            )
+            return
+        
+        payment_info = await crypto_service.create_invoice(
             amount=price,
             description=f"VPN Подписка - {plan_display_name}",
-            user_id=user.id,
-            payment_id=payment.id
+            fiat="USD",
+            accepted_assets=settings.crypto_pay_accepted_assets,
+            swap_to=settings.crypto_pay_swap_to,
+            expires_in=settings.crypto_pay_expires_in,
+            payload=str(payment.id)  # ID платежа для привязки
         )
         
-        logger.info(f"[USDT-013] USDT Payment info: {payment_info}")
+        logger.info(f"[CRYPTO-014] Crypto Pay invoice info: {payment_info}")
         
         # Проверяем успешное создание платежа
         if payment_info and payment_info.get('pay_url'):
-            logger.info("[USDT-014] Payment invoice created successfully")
+            logger.info("[CRYPTO-015] Payment invoice created successfully")
             
             # Обновляем платеж с внешним ID
             if payment_info.get('invoice_id'):
-                logger.info(f"[USDT-015] Updating payment with invoice_id: {payment_info['invoice_id']}")
+                logger.info(f"[CRYPTO-016] Updating payment with invoice_id: {payment_info['invoice_id']}")
                 await payment_repo.update_payment_status(
                     payment.id, 
                     "pending",  # Не completed, а pending т.к. Оплата еще не прошла
                     payment_info["invoice_id"]
                 )
-                logger.info("[USDT-016] Payment updated successfully")
+                logger.info("[CRYPTO-017] Payment updated successfully")
             
             await callback.message.edit_text(
                 f"✅ Конфигурация сохранена!\n\n"
@@ -469,176 +479,31 @@ async def process_payment_cryptobot_usdt(callback: CallbackQuery):
                 f"Тариф: {plan_display_name}\n"
                 f"Протокол: {protocol.upper()}\n"
                 f"Цена: ${price}\n\n"
-                f"💳 <b>Детали оплаты:</b>\n"
-                f"ID платежа: #{payment.id}\n"
-                f"Способ оплаты: USDT\n\n"
+                f"💳 <b>Способ оплаты:</b> Криптовалюта\n"
+                f"💰 <b>Принимаемые валюты:</b> {settings.crypto_pay_accepted_assets}\n\n"
                 f"🔗 <b>Ссылка для оплаты:</b>\n"
-                f"<a href=\"{payment_info['pay_url']}\">Оплатить USDT</a>\n\n"
+                f"<a href=\"{payment_info['pay_url']}\">Оплатить криптовалютой</a>\n\n"
                 f"⏰ Оплата будет обработана автоматически после поступления средств",
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="💳 Оплатить", url=payment_info['pay_url'])],
+                    [InlineKeyboardButton(text="� Оплатить", url=payment_info['pay_url'])],
                     [InlineKeyboardButton(text="🔄 Проверить оплату", callback_data=f"check_payment_{payment.id}")],
                     [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
                 ]),
                 parse_mode="HTML"
             )
-            logger.info("[USDT-017] Payment message sent to user")
+            logger.info("[CRYPTO-018] Payment message sent to user")
         else:
-            logger.error(f"[USDT-018] CryptoBot invoice creation failed: {payment_info}")
+            logger.error(f"[CRYPTO-019] Crypto Pay invoice creation failed: {payment_info}")
             await callback.message.edit_text(
-                "❌ [USDT-018] Не удалось создать инвойс в CryptoBot. Попробуйте другой способ оплаты.",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
-                ])
-            )
-        
-    except Exception as e:
-        logger.error(f"[USDT-999] Критическая ошибка в оплате USDT: {format_error_traceback(e)}")
-        await callback.message.edit_text(
-            "❌ [USDT-999] Произошла критическая ошибка при обработке платежа. Пожалуйста, свяжитесь с поддержкой.",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
-            ])
-        )
-
-
-@user_router.callback_query(F.data == "payment_cryptobot_ton")
-async def process_payment_cryptobot_ton(callback: CallbackQuery):
-    """Обработка выбора оплаты через CryptoBot TON"""
-    try:
-        logger.info(f"[TON-001] Starting TON payment process for user {callback.from_user.id}")
-        
-        # Получаем данные из callback (сохраняем в контексте сообщения)
-        # В реальном приложении нужно сохранять данные о тарифе и протоколе
-        # Для примера используем значения по умолчанию
-        plan = "1_month"  # По умолчанию
-        protocol = "vless"  # По умолчанию
-        
-        from src.core.config import settings
-        ton_prices = settings.get_prices_for_payment_method("cryptobot_ton")
-        price = ton_prices[plan]
-        
-        plan_display_name = {
-            "1_month": "1 месяц",
-            "3_months": "3 месяца", 
-            "6_months": "6 месяцев",
-            "1_year": "1 год"
-        }.get(plan, plan.replace('_', ' ').title())
-        
-        # Получаем пользователя
-        logger.info(f"[TON-002] Getting user {callback.from_user.id}")
-        user = await user_repo.get_user_by_telegram_id(callback.from_user.id)
-        
-        if not user:
-            logger.error(f"[TON-003] User {callback.from_user.id} not found")
-            await callback.message.edit_text(
-                "❌ [TON-003] Пользователь не найден. Попробуйте перезапустить бота.",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
-                ])
-            )
-            return
-        
-        logger.info(f"[TON-004] User found: {user.__dict__}")
-        
-        # Создаем подписку
-        logger.info("[TON-005] Creating subscription")
-        subscription = await subscription_repo.create_subscription(
-            user_id=user.id,
-            plan_name=plan,
-            price=price,
-            duration_days=get_duration_days(plan),
-            status=SubscriptionStatus.PENDING,
-            protocol=protocol
-        )
-        
-        if not subscription:
-            logger.error("[TON-006] Failed to create subscription")
-            await callback.message.edit_text(
-                "❌ [TON-006] Не удалось создать подписку. Попробуйте позже.",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="� Назад", callback_data="show_main_menu")]
-                ])
-            )
-            return
-        
-        logger.info(f"[TON-007] Subscription created: {subscription.id}")
-        
-        # Создаем запись о платеже
-        logger.info("[TON-008] Creating payment record")
-        payment = await payment_repo.create_payment(
-            user_id=user.id,
-            amount=price,
-            currency="TON",
-            payment_method="cryptobot_ton",
-            subscription_id=subscription.id,
-            description=f"VPN Подписка - {plan_display_name}"
-        )
-        
-        if not payment:
-            logger.error("[TON-009] Failed to create payment record")
-            await callback.message.edit_text(
-                "❌ [TON-009] Не удалось создать запись о платеже. Попробуйте позже.",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
-                ])
-            )
-            return
-        
-        logger.info(f"[TON-010] Payment created: {payment.id}")
-        
-        # Создаем платеж через CryptoBot
-        logger.info("[TON-011] Creating CryptoBot TON invoice")
-        payment_info = await payment_processor.create_payment_ton(
-            amount=price,
-            description=f"VPN Подписка - {plan_display_name}",
-            user_id=user.id,
-            payment_id=payment.id
-        )
-        
-        logger.info(f"[TON-012] CryptoBot response: {payment_info}")
-        
-        if payment_info and payment_info.get('pay_url'):
-            # Обновляем платеж с внешним ID
-            if payment_info.get('invoice_id'):
-                logger.info(f"[TON-013] Updating payment with invoice_id: {payment_info['invoice_id']}")
-                await payment_repo.update_payment_status(
-                    payment.id, 
-                    "pending",  # Не completed, а pending т.к. Оплата еще не прошла
-                    payment_info["invoice_id"]
-                )
-                logger.info("[TON-014] Payment updated successfully")
-            
-            await callback.message.edit_text(
-                f"✅ Конфигурация сохранена!\n\n"
-                f"📋 <b>Детали заказа:</b>\n"
-                f"Тариф: {plan_display_name}\n"
-                f"Протокол: {protocol.upper()}\n"
-                f"Цена: ${price}\n\n"
-                f"💳 <b>Детали оплаты:</b>\n"
-                f"ID платежа: #{payment.id}\n"
-                f"Способ оплаты: TON\n\n"
-                f"<a href=\"{payment_info['pay_url']}\">Оплатить TON</a>\n\n"
-                f"⏰ Оплата будет обработана автоматически после поступления средств",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔷 Оплатить", url=payment_info['pay_url'])],
-                    [InlineKeyboardButton(text="🔄 Проверить оплату", callback_data=f"check_payment_{payment.id}")],
-                    [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
-                ]),
-                parse_mode="HTML"
-            )
-        else:
-            logger.error(f"[TON-015] CryptoBot invoice creation failed: {payment_info}")
-            await callback.message.edit_text(
-                "❌ [TON-015] Не удалось создать инвойс в CryptoBot. Попробуйте другой способ оплаты.",
+                "❌ [CRYPTO-019] Не удалось создать инвойс. Попробуйте другой способ оплаты.",
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
                 ])
             )
     except Exception as e:
-        logger.error(f"[TON-999] Критическая ошибка в оплате TON: {format_error_traceback(e)}")
+        logger.error(f"[CRYPTO-999] Критическая ошибка в крипто-оплате: {format_error_traceback(e)}")
         await callback.message.edit_text(
-            "❌ [TON-999] Произошла критическая ошибка при обработке платежа. Пожалуйста, свяжитесь с поддержкой.",
+            "❌ [CRYPTO-999] Произошла критическая ошибка при обработке платежа. Пожалуйста, свяжитесь с поддержкой.",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
             ])
@@ -665,15 +530,37 @@ async def check_payment_status(callback: CallbackQuery):
         logger.info(f"  - status: {payment.status}")
         logger.info(f"  - subscription_id: {payment.subscription_id}")
         
-        # Если есть внешний ID платежа, проверяем через CryptoBot API
+        # Если есть внешний ID платежа, проверяем через соответствующий API
         if payment.payment_id:
-            payment_info = await payment_processor.check_payment(payment.payment_id)
+            payment_info = None
+            
+            if payment.payment_method == "crypto_pay":
+                # Проверяем через Crypto Pay API
+                from src.services.crypto_pay import get_crypto_pay_service
+                crypto_service = get_crypto_pay_service()
+                if crypto_service:
+                    payment_info = await crypto_service.get_invoice(payment.payment_id)
+                    # Crypto Pay API возвращает объект инвойса напрямую
+                    # Статус может быть 'paid', 'active', 'pending', 'expired', 'failed'
+                    if payment_info:
+                        logger.info(f"  - Crypto Pay API response: {payment_info}")
+                        api_status = payment_info.get("status")
+                        logger.info(f"  - Crypto Pay status: {api_status}")
+                        # Используем статус напрямую из API
+                        payment_info = {"status": api_status}
+            else:
+                # Проверяем через старый CryptoBot API
+                payment_info = await payment_processor.check_payment(payment.payment_id)
             
             logger.info(f"  - payment_info from API: {payment_info}")
             
-            if payment_info and payment_info.get("status") == "paid":
-                logger.info(f"✅ Платеж {payment_id} оплачен, активируем подписку")
-                # Активируем подписку
+            # Проверяем статус оплаченности
+            if payment_info:
+                api_status = payment_info.get("status")
+                # Crypto Pay API может возвращать "paid" или "active" для оплаченных инвойсов
+                if api_status in ["paid", "active"]:
+                    logger.info(f"✅ Платеж {payment_id} оплачен (статус: {api_status}), активируем подписку")
+                    # Активируем подписку
                 success = await activate_subscription_after_payment(payment)
                 
                 if success:
