@@ -330,7 +330,8 @@ def get_payment_methods_keyboard():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⭐ Telegram Stars", callback_data="payment_stars")],
         [InlineKeyboardButton(text="💳 Криптовалюта (USDT, TON, BTC, ETH...)", callback_data="payment_crypto_pay")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")],
+        [InlineKeyboardButton(text="� Купить напрямую (карта)", callback_data="payment_direct")],
+        [InlineKeyboardButton(text="� Назад", callback_data="show_main_menu")],
     ])
     return keyboard
 
@@ -504,6 +505,67 @@ async def process_payment_crypto_pay(callback: CallbackQuery):
         logger.error(f"[CRYPTO-999] Критическая ошибка в крипто-оплате: {format_error_traceback(e)}")
         await callback.message.edit_text(
             "❌ [CRYPTO-999] Произошла критическая ошибка при обработке платежа. Пожалуйста, свяжитесь с поддержкой.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
+            ])
+        )
+
+
+@user_router.callback_query(F.data == "payment_direct")
+async def process_payment_direct(callback: CallbackQuery):
+    """Обработка выбора прямой оплаты картой"""
+    try:
+        logger.info(f"[DIRECT-001] Starting direct payment process for user {callback.from_user.id}")
+        
+        from src.core.config import settings
+        
+        # Получаем информацию о пользователе
+        user = await user_repo.get_user_by_telegram_id(callback.from_user.id)
+        if not user:
+            logger.error(f"[DIRECT-002] User {callback.from_user.id} not found")
+            await callback.answer("❌ Пользователь не найден", show_alert=True)
+            return
+        
+        # Формируем сообщение с инструкцией
+        message_text = (
+            "💰 <b>Прямая оплата картой</b>\n\n"
+            "📋 <b>Как это работает:</b>\n"
+            "• Оплата происходит напрямую через карту\n"
+            "• Вы связываетесь с администратором\n"
+            "• Администратор создаст для вас платежную ссылку\n"
+            "• После оплаты подписка активируется автоматически\n\n"
+            "💳 <b>Преимущества:</b>\n"
+            "• ✅ Безопасная оплата через проверенную систему\n"
+            "• ✅ Поддержка всех банковских карт\n"
+            "• ✅ Мгновенная активация подписки\n"
+            "• ✅ Помощь администратора при проблемах\n\n"
+            "📞 <b>Связаться с администратором:</b>\n"
+            f"• Напишите администратору: @{settings.support_username}\n"
+            "• Укажите ваш ID: " + str(callback.from_user.id) + "\n"
+            "• Опишите какой тариф вам нужен\n\n"
+            "⏰ <b>Время ответа:</b> Обычно 5-15 минут\n"
+            "🕐 <b>Время работы:</b> Круглосуточно"
+        )
+        
+        # Создаем клавиатуру
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💬 Написать администратору", url=f"https://t.me/{settings.support_username}")],
+            [InlineKeyboardButton(text="📋 Посмотреть тарифы", callback_data="show_plans")],
+            [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
+        ])
+        
+        await callback.message.edit_text(
+            message_text,
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        
+        logger.info(f"[DIRECT-003] Direct payment info sent to user {callback.from_user.id}")
+        
+    except Exception as e:
+        logger.error(f"[DIRECT-999] Ошибка в прямой оплате: {format_error_traceback(e)}")
+        await callback.message.edit_text(
+            "❌ Произошла ошибка. Пожалуйста, попробуйте позже или свяжитесь с поддержкой.",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
             ])
@@ -1054,6 +1116,93 @@ async def callback_show_main_menu(callback: CallbackQuery):
         await callback.answer()
     except Exception as e:
         logger.error(f"❌ Ошибка показа главного меню: {format_error_traceback(e)}")
+        await callback.answer("❌ Произошла ошибка", show_alert=True)
+
+
+@user_router.callback_query(F.data == "show_plans")
+async def callback_show_plans(callback: CallbackQuery):
+    """
+    Callback для показа тарифных планов
+    """
+    try:
+        from src.core.config import settings
+        
+        # Получаем цены
+        prices = settings.subscription_prices
+        
+        # Формируем сообщение с тарифами
+        plans_text = (
+            "📋 <b>Наши тарифные планы</b>\n\n"
+            f"💎 <b>1 месяц</b>\n"
+            f"   Цена: ${prices.get('1_month', 0)}\n"
+            f"   Идеально для знакомства с сервисом\n\n"
+            f"💎 <b>3 месяца</b>\n"
+            f"   Цена: ${prices.get('3_months', 0)}\n"
+            f"   Экономия: ~15%\n\n"
+            f"💎 <b>6 месяцев</b>\n"
+            f"   Цена: ${prices.get('6_months', 0)}\n"
+            f"   Экономия: ~25%\n\n"
+            f"💎 <b>1 год</b>\n"
+            f"   Цена: ${prices.get('1_year', 0)}\n"
+            f"   Экономия: ~35%\n\n"
+            "💰 <b>Для прямой оплаты картой:</b>\n"
+            "💬 Напишите администратору и укажите выбранный тариф\n"
+            f"📞 Администратор: @{settings.support_username}\n\n"
+            "🔧 <b>Технические характеристики:</b>\n"
+            "• Все протоколы: VLESS, VMess, Trojan, Shadowsocks\n"
+            "• Высокая скорость и стабильность\n"
+            "• Поддержка всех устройств\n"
+            "• Безлимитный трафик"
+        )
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💬 Написать администратору", url=f"https://t.me/{settings.support_username}")],
+            [InlineKeyboardButton(text="💰 Выбрать способ оплаты", callback_data="show_payment_methods")],
+            [InlineKeyboardButton(text="🔙 Назад", callback_data="show_main_menu")]
+        ])
+        
+        await callback.message.edit_text(
+            plans_text,
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"❌ Ошибка показа тарифов: {format_error_traceback(e)}")
+        await callback.answer("❌ Произошла ошибка", show_alert=True)
+
+
+@user_router.callback_query(F.data == "show_payment_methods")
+async def callback_show_payment_methods(callback: CallbackQuery):
+    """
+    Callback для показа способов оплаты
+    """
+    try:
+        keyboard = get_payment_methods_keyboard()
+        
+        await callback.message.edit_text(
+            "💰 <b>Выберите способ оплаты</b>\n\n"
+            "Мы принимаем различные способы оплаты для вашего удобства:\n\n"
+            "⭐ <b>Telegram Stars</b>\n"
+            "• Оплата внутри Telegram\n"
+            "• Мгновенная активация\n\n"
+            "💳 <b>Криптовалюта</b>\n"
+            "• USDT, TON, BTC, ETH и другие\n"
+            "• Автоматический пересчет из USD\n"
+            "• Низкие комиссии\n\n"
+            "💰 <b>Прямая оплата картой</b>\n"
+            "• Связь с администратором\n"
+            "• Создание платежной ссылки\n"
+            "• Поддержка всех карт\n\n"
+            "Выберите удобный для вас способ:",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"❌ Ошибка показа способов оплаты: {format_error_traceback(e)}")
         await callback.answer("❌ Произошла ошибка", show_alert=True)
 
 
