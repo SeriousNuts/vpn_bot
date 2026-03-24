@@ -4,9 +4,8 @@
 """
 
 import logging
-import secrets
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 from httpx import HTTPStatusError
 from marzban import (
@@ -15,7 +14,7 @@ from marzban import (
     UserModify,
     ProxySettings,
     MarzbanTokenCache,
-    HTTPValidationError, SystemStats, UserResponse, UsersResponse, SubscriptionUserResponse
+    SystemStats, UserResponse, UsersResponse, SubscriptionUserResponse
 )
 
 from src.core.config import settings

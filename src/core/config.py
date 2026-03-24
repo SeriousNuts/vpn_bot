@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     admin_id: int = Field(..., validation_alias="ADMIN_ID")
     support_username: str = Field(..., validation_alias="SUPPORT_USERNAME")
     bot_username: str = Field(..., validation_alias="BOT_USERNAME")
+    bot_name: str = Field(..., validation_alias="BOT_NAME")#имя бота если отличается bot_username
 
     # Database Configuration
     database_url: str = Field(..., validation_alias="DATABASE_URL")
