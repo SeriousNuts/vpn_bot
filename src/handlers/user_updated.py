@@ -100,18 +100,20 @@ async def cmd_start(message: Message):
             )
             
             welcome_text = (
-                f"🎉 <b>Добро пожаловать {user.telegram_id} в VPN Bot!</b>\n\n"
-                "🚀 Я помогу вам получить доступ к безопасному и быстрому интернету.\n\n"
+                f"🎉 <b>Добро пожаловать {user.telegram_id} в {settings.bot_name}!</b>\n\n"
+                "🚀 НИКТО НЕ ЗАБЕРЕТ У ВАС ИНТЕРНЕТ\n\n"
                 "💡 <b>Что я могу делать:</b>\n"
                 "• 📱 Управлять вашей VPN подпиской\n"
                 "• 💎 Принимать оплату через Telegram Stars и cryptoBOT\n"
                 "• 📊 Показывать статистику использования\n"
                 "• 💬 Даже есть поддержка\n\n"
+                f"Остались вопросы? Пишете @{settings.support_username} тут же можно купить подписку если нет крипты или звёзд"
                 "🎯 <b>Начните с выбора тарифа:</b>"
             )
         else:
             welcome_text = (
-                f"👋 <b>С возвращением, tg_{user.telegram_id or 'пользователь'}!</b>\n\n"
+                f"👋 <b>С возвращением, tg_{user.telegram_id or 'пользователь'} в {settings.bot_name}!!</b>\n\n"
+                f"Есть вопросы? Пишете @{settings.support_username} тут же можно купить подписку если нет крипты или звёзд"
                 "🚀 Готов помочь вам с VPN подпиской.\n\n"
                 "💡 <b>Доступные действия:</b>\n"
                 "• 📱 Посмотреть текущую подписку\n"
@@ -991,7 +993,7 @@ async def cmd_support(message: Message):
         text = (
                 "💬 <b>Поддержка</b>"
                 "🆘 <b>Нужна помощь?</b>"
-                f"📝 <b>Напишите нам: {settings.support_username}</b>"
+                f"📝 <b>Напишите нам: @{settings.support_username}</b>"
                 "• Опишите вашу проблему"
                 f"• Укажите ваш Telegram ID: <code>{str(message.from_user.id)}</code>"
               "• Приложите скриншоты если нужно"
