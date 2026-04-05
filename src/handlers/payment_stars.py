@@ -40,7 +40,7 @@ async def process_stars_payment(callback: CallbackQuery, payment, plan_display_n
         invoice_result = await stars_payment_service.create_stars_invoice(
             user_id=callback.from_user.id,
             plan_name=plan_name,
-            description=f"VPN Подписка - {plan_display_name}"
+            description=f"Подписка - {plan_display_name}"
         )
         
         if invoice_result and invoice_result.get("invoice_data"):
@@ -121,7 +121,7 @@ async def cmd_buy_stars(message: Message):
             return
         
         # Формируем сообщение с тарифами
-        text = "💎 **Оплата VPN подписки звёздами Telegram**\n\n"
+        text = "💎 **Оплата подписки звёздами Telegram**\n\n"
         text += "Выберите подходящий тариф:\n\n"
         
         for plan in plans:
@@ -231,7 +231,7 @@ async def process_successful_payment(message: Message):
         if success:
             # Формируем успешное сообщение
             text = "🎉 **Платеж успешно выполнен!**\n\n"
-            text += "✅ Ваша VPN подписка активирована.\n"
+            text += "✅ Ваша подписка активирована.\n"
             text += "📱 Конфигурация будет отправлена вам в ближайшее время.\n\n"
             text += "💡 <i>Спасибо за покупку! Приятного использования!</i>"
             
@@ -371,7 +371,7 @@ async def callback_back_to_main(callback: CallbackQuery):
     Возврат в главное меню
     """
     try:
-        from src.handlers.user_updated import get_back_to_main_inline_keyboard
+        from src.handlers.user import get_back_to_main_inline_keyboard
         
         keyboard = await get_back_to_main_inline_keyboard()
         

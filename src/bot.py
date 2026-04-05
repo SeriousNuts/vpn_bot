@@ -8,12 +8,9 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from src.core.config import settings
 from src.core.database import init_db
 from src.handlers.admin import admin_router
-from src.handlers.user import user_router
-from src.handlers.user_updated import user_router as user_updated_router
-from src.services.notification import NotificationService
+from src.handlers.user import user_router as user_updated_router
 from src.services.crypto_pay import init_crypto_pay_service
-
-
+from src.services.notification import NotificationService
 
 # Initialize bot
 bot_instance: Optional[Bot] = None

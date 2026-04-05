@@ -80,10 +80,10 @@ class DatabaseManager:
                 await conn.execute(select(1))
             
             self._initialized = True
-            logger.info("✅ Database manager initialized successfully")
+            logger.info("Database manager initialized successfully")
             
         except Exception as e:
-            logger.error(f"❌ Failed to initialize database manager: {format_error_traceback(e)}")
+            logger.error(f"Failed to initialize database manager: {format_error_traceback(e)}")
             raise
     
     async def close(self) -> None:
@@ -302,12 +302,13 @@ class UserRepository:
         self.db = db_manager
     
     async def create_user(self, telegram_id: int,
-                      status: str = "active") -> User:
+                      status: str = "active", marzban_username: str = None, ) -> User:
         """Create new user"""
         return await self.db.create(
             User, 
             telegram_id=telegram_id,
-            status=status
+            status=status,
+            marzban_username=marzban_username,
         )
 
     async def get_user_by_id(self, user_id: int) -> Optional[User]:
