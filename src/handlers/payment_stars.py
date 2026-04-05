@@ -371,7 +371,7 @@ async def callback_back_to_main(callback: CallbackQuery):
     Возврат в главное меню
     """
     try:
-        from src.handlers.user_updated import get_back_to_main_inline_keyboard
+        from src.handlers.user import get_back_to_main_inline_keyboard
         
         keyboard = await get_back_to_main_inline_keyboard()
         
