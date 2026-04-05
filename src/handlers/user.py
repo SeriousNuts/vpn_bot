@@ -134,7 +134,7 @@ async def cmd_start(message: Message, state: FSMContext):
             )
             
             welcome_text = (
-                f"🎉 Добро пожаловать в VPN Bot!\n\n"
+                f"🎉 Добро пожаловать в сервис стабильного соединения  с небольшой базой пользователей - без очередей за скоростью и без посторонних!\n\n"
                 f"Выберите опцию для начала работы:"
             )
             
@@ -229,7 +229,7 @@ async def process_payment_stars(callback: CallbackQuery, state: FSMContext):
         subscription_id=subscription.id,
         amount=price,
         payment_method="stars",
-        description=f"VPN Подписка - {plan_display_name}"
+        description=f"Подписка - {plan_display_name}"
     )
 
     
@@ -266,14 +266,14 @@ async def process_payment_cryptobot_usdt(callback: CallbackQuery, state: FSMCont
         subscription_id=subscription.id,
         amount=price,
         payment_method="cryptobot_usdt",
-        description=f"VPN Подписка - {plan_display_name}"
+        description=f"Подписка - {plan_display_name}"
     )
 
     
     # Create CryptoBot payment with USDT
     payment_info = await payment_processor.create_payment_usdt(
         amount=price,
-        description=f"VPN Подписка - {plan_display_name}",
+        description=f"Подписка - {plan_display_name}",
         user_id=callback.from_user.id,
         payment_id=payment.id
     )
@@ -344,7 +344,7 @@ async def process_payment_cryptobot_ton(callback: CallbackQuery, state: FSMConte
         subscription_id=subscription.id,
         amount=price,
         payment_method="cryptobot_ton",
-        description=f"VPN Подписка - {plan_display_name}"
+        description=f"Подписка - {plan_display_name}"
     )
 
     
@@ -354,7 +354,7 @@ async def process_payment_cryptobot_ton(callback: CallbackQuery, state: FSMConte
     try:
         payment_info = await payment_processor.create_payment_ton(
             amount=price,
-            description=f"VPN Подписка - {plan_display_name}",
+            description=f"Подписка - {plan_display_name}",
             user_id=callback.from_user.id,
             payment_id=payment.id
         )
@@ -427,7 +427,7 @@ async def check_payment_status(callback: CallbackQuery):
             return
         
         # Логируем информацию о платеже для диагностики
-        logger.info(f"🔍 Проверка платежа {payment_id}:")
+        logger.info(f"Проверка платежа {payment_id}:")
         logger.info(f"  - payment_method: {payment.payment_method}")
         logger.info(f"  - payment_id (external): {payment.payment_id}")
         logger.info(f"  - status: {payment.status}")
@@ -448,7 +448,7 @@ async def check_payment_status(callback: CallbackQuery):
                     await callback.message.edit_text(
                         "✅ **Платеж успешно получен!**\n\n"
                         "🎉 Ваша подписка активирована.\n"
-                        "📱 Теперь вы можете использовать VPN сервис.",
+                        "📱 Теперь вы можете использовать сервис.",
                         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                             [InlineKeyboardButton(text="📱 Моя подписка", callback_data="my_subscription")],
                             [InlineKeyboardButton(text="🏠 Главное меню", callback_data="show_main_menu")]
@@ -460,10 +460,10 @@ async def check_payment_status(callback: CallbackQuery):
                             [InlineKeyboardButton(text="🆘 Поддержка", callback_data="support")]
                         ]))
             else:
-                logger.warning(f"⚠️ Платеж {payment_id} еще не оплачен. Статус: {payment_info.get('status') if payment_info else 'Unknown'}")
+                logger.warning(f"Платеж {payment_id} еще не оплачен. Статус: {payment_info.get('status') if payment_info else 'Unknown'}")
                 await callback.answer("🔄 Платеж еще не обработан", show_alert=True)
         else:
-            logger.warning(f"⚠️ У платежа {payment_id} нет внешнего ID, метод: {payment.payment_method}")
+            logger.warning(f"У платежа {payment_id} нет внешнего ID, метод: {payment.payment_method}")
             
             # Для платежей через Stars обрабатываем по-другому
             if payment.payment_method == "stars":

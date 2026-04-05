@@ -64,7 +64,7 @@ class TelegramStarsPaymentService:
                 return None
             # Проверяем существование тарифа
             if plan_name not in self.plans_prices:
-                logger.error(f"❌ Неизвестный тариф: {plan_name}")
+                logger.error(f"Неизвестный тариф: {plan_name}")
                 return None
             
             price_in_stars = self.plans_prices[plan_name]
@@ -83,7 +83,7 @@ class TelegramStarsPaymentService:
             )
             
             if not subscription:
-                logger.error(f"❌ Не удалось создать подписку для пользователя {user_id}")
+                logger.error(f"Не удалось создать подписку для пользователя {user_id}")
                 return None
             
             # Создаем запись о платеже в базе данных
@@ -93,27 +93,27 @@ class TelegramStarsPaymentService:
                 currency="XTR",  # Telegram Stars
                 payment_method="telegram_stars",
                 subscription_id=subscription.id,
-                description=f"VPN Подписка - {plan_name}"
+                description=f"Подписка - {plan_name}"
             )
             
             if not payment:
-                logger.error(f"❌ Не удалось создать запись о платеже для пользователя {user_id}")
+                logger.error(f"Не удалось создать запись о платеже для пользователя {user_id}")
                 return None
             
             # Формируем описание
             if not description:
-                description = f"VPN подписка на {duration_days} дней"
+                description = f"Подписка на {duration_days} дней"
             
             # Создаем цены для инвойса
             prices = [
                 LabeledPrice(
-                    label=f"VPN подписка {plan_name}",
+                    label=f"Подписка {plan_name}",
                     amount=price_in_stars
                 )
             ]
             
             invoice_data = {
-                "title": "VPN подписка",
+                "title": "Подписка",
                 "description": description,
                 "payload": str(payment.id),  # ID платежа как payload
                 "provider_token": "",  # Пусто для Telegram Stars
@@ -128,7 +128,7 @@ class TelegramStarsPaymentService:
                 "is_flexible": False,
             }
             
-            logger.info(f"✅ Создан инвойс для оплаты звёздами: пользователь {user_id}, тариф {plan_name}, {price_in_stars} звёзд")
+            logger.info(f"Создан инвойс для оплаты звёздами: пользователь {user_id}, тариф {plan_name}, {price_in_stars} звёзд")
             
             return {
                 "invoice_data": invoice_data,
@@ -158,18 +158,18 @@ class TelegramStarsPaymentService:
             # Проверяем существование платежа
             payment = await payment_repo.payment_repo.get_payment(payment_id)
             if not payment:
-                logger.error(f"❌ Платеж не найден: {payment_id}")
+                logger.error(f"Платеж не найден: {payment_id}")
                 return False
             
             # Проверяем статус платежа
             if payment.status != PaymentStatus.PENDING:
-                logger.error(f"❌ Платеж уже обработан: {payment_id}, статус: {payment.status}")
+                logger.error(f"Платеж уже обработан: {payment_id}, статус: {payment.status}")
                 return False
             
             # Проверяем пользователя
             user = await user_repo.get_user(payment.user_id)
             if not user:
-                logger.error(f"❌ Пользователь не найден: {payment.user_id}")
+                logger.error(f"Пользователь не найден: {payment.user_id}")
                 return False
             
             # Проверяем сумму
@@ -209,7 +209,7 @@ class TelegramStarsPaymentService:
             
             # Проверяем текущий статус
             if payment.status != PaymentStatus.PENDING:
-                logger.warning(f"⚠️ Платеж уже обработан: {payment_id}, статус: {payment.status}")
+                logger.warning(f"Платеж уже обработан: {payment_id}, статус: {payment.status}")
                 return True
             
             # Обновляем статус платежа
@@ -222,7 +222,7 @@ class TelegramStarsPaymentService:
             success = await self._activate_subscription(payment)
             
             if success:
-                logger.info(f"✅ Платеж успешно обработан: {payment_id}, пользователь {payment.user_id}")
+                logger.info(f"Платеж успешно обработан: {payment_id}, пользователь {payment.user_id}")
                 
                 # Отправляем уведомление
                 await self.notification_service.send_payment_confirmation(
@@ -323,13 +323,13 @@ class TelegramStarsPaymentService:
             Строка с описанием
         """
         base_descriptions = {
-            "1_month": "1 месяц VPN подписки",
-            "3_months": "3 месяца VPN подписки",
-            "6_months": "6 месяцев VPN подписки",
-            "1_year": "1 год VPN подписки"
+            "1_month": "1 месяцподписки",
+            "3_months": "3 месяца подписки",
+            "6_months": "6 месяцев подписки",
+            "1_year": "1 год подписки"
         }
         
-        description = base_descriptions.get(plan_name, f"{duration_days} дней VPN подписки")
+        description = base_descriptions.get(plan_name, f"{duration_days} дней подписки")
         
         if discount_percent > 0:
             description += f" (экономия {discount_percent}%)"
@@ -392,7 +392,7 @@ class TelegramStarsPaymentService:
             
             # Telegram Stars API не поддерживает возвраты
             # Но можно деактивировать подписку и вернуть баланс
-            logger.warning(f"⚠️ Возврат платежа {payment_id} не поддерживается Telegram Stars API")
+            logger.warning(f"Возврат платежа {payment_id} не поддерживается Telegram Stars API")
             
             # Здесь можно добавить логику деактивации подписки
             # и возврата внутренних средств пользователя

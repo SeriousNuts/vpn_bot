@@ -103,7 +103,7 @@ async def cmd_start(message: Message):
                 f"🎉 <b>Добро пожаловать {user.telegram_id} в {settings.bot_name}!</b>\n\n"
                 "🚀 НИКТО НЕ ЗАБЕРЕТ У ВАС ИНТЕРНЕТ\n\n"
                 "💡 <b>Что я могу делать:</b>\n"
-                "• 📱 Управлять вашей VPN подпиской\n"
+                "• 📱 Управлять вашей подпиской\n"
                 "• 💎 Принимать оплату через Telegram Stars и cryptoBOT\n"
                 "• 📊 Показывать статистику использования\n"
                 "• 💬 Даже есть поддержка\n\n"
@@ -114,7 +114,7 @@ async def cmd_start(message: Message):
             welcome_text = (
                 f"👋 <b>С возвращением, tg_{user.telegram_id or 'пользователь'} в {settings.bot_name}!!</b>\n\n"
                 f"Есть вопросы? Пишете @{settings.support_username} тут же можно купить подписку если нет крипты или звёзд"
-                "🚀 Готов помочь вам с VPN подпиской.\n\n"
+                "🚀 Готов помочь вам с подпиской.\n\n"
                 "💡 <b>Доступные действия:</b>\n"
                 "• 📱 Посмотреть текущую подписку\n"
                 "• 💎 Купить новую подписку\n"
@@ -349,7 +349,7 @@ async def process_payment_stars(callback: CallbackQuery):
                 self.subscription = None
         
         payment = TempPayment()
-        await process_stars_payment(callback, payment, "VPN подписка", "vless")
+        await process_stars_payment(callback, payment, "Подписка", "vless")
         
     except Exception as e:
         logger.error(f"[STARS-999] Ошибка в оплате звездами: {format_error_traceback(e)}")
@@ -420,7 +420,7 @@ async def process_payment_crypto_pay(callback: CallbackQuery):
             subscription_id=subscription.id,
             amount=price,
             payment_method="crypto_pay",
-            description=f"VPN Подписка - {plan_display_name}"
+            description=f"Подписка - {plan_display_name}"
         )
         
         if not payment:
@@ -452,7 +452,7 @@ async def process_payment_crypto_pay(callback: CallbackQuery):
         
         payment_info = await crypto_service.create_invoice(
             amount=price,
-            description=f"VPN Подписка - {plan_display_name}",
+            description=f"Подписка - {plan_display_name}",
             fiat="USD",
             accepted_assets=settings.crypto_pay_accepted_assets,
             swap_to=settings.crypto_pay_swap_to,
@@ -631,7 +631,7 @@ async def check_payment_status(callback: CallbackQuery):
                     await callback.message.edit_text(
                         "✅ <b>Платеж успешно получен!</b>\n\n"
                         "🎉 Ваша подписка активирована.\n"
-                        "📱 Теперь вы можете использовать VPN сервис.\n\n"
+                        "📱 Теперь вы можете использовать сервис стабильного соединения  с небольшой базой пользователей - без очередей за скоростью и без посторонних.\n\n"
                         "📖 <b>Как подключиться:</b>\n"
                         "1. Нажмите '<b>📖 Инструкция по подключению</b>' ниже\n"
                         "2. Установите приложение для вашей платформы\n"
@@ -649,10 +649,10 @@ async def check_payment_status(callback: CallbackQuery):
                             [InlineKeyboardButton(text="🆘 Поддержка", callback_data="support")]
                         ]))
             else:
-                logger.warning(f"⚠️ Платеж {payment_id} еще не оплачен. Статус: {payment_info.get('status') if payment_info else 'Unknown'}")
+                logger.warning(f"Платеж {payment_id} еще не оплачен. Статус: {payment_info.get('status') if payment_info else 'Unknown'}")
                 await callback.answer("🔄 Платеж еще не обработан", show_alert=True)
         else:
-            logger.warning(f"⚠️ У платежа {payment_id} нет внешнего ID, метод: {payment.payment_method}")
+            logger.warning(f"У платежа {payment_id} нет внешнего ID, метод: {payment.payment_method}")
             
             # Для платежей через Stars обрабатываем по-другому
             if payment.payment_method == "telegram_stars":
@@ -720,7 +720,7 @@ async def cmd_connection_guide(message: Message):
     try:
         guide_text = (
             "📖 <b>Инструкция по подключению</b>\n\n"
-            "Для подключения к VPN вам понадобится специальное приложение-клиент. "
+            "Для подключения к сервису вам понадобится специальное приложение-клиент. "
             "Выберите вашу платформу ниже и установите приложение:\n\n"
             "<b>🤖 Android</b>\n"
             "• <a href=\"https://play.google.com/store/apps/details?id=com.happproxy\">Haproxy</a>\n"
@@ -864,7 +864,7 @@ async def show_connection_guide_callback(callback: CallbackQuery):
     try:
         guide_text = (
             "📖 <b>Инструкция по подключению</b>\n\n"
-            "Для подключения к VPN вам понадобится специальное приложение-клиент. "
+            "Для подключения к сервису вам понадобится специальное приложение-клиент. "
             "Выберите вашу платформу ниже и установите приложение:\n\n"
             "<b>🤖 Android</b>\n"
             "• <a href=\"https://play.google.com/store/apps/details?id=com.happproxy\">Haproxy</a>\n"
@@ -999,7 +999,7 @@ async def cmd_support(message: Message):
               "• Приложите скриншоты если нужно"
               "⏰ <b>Время ответа:</b> обычно 5-15 минут"
               "💡 <b>Частые вопросы:</b>"
-              "• Как подключить VPN?"
+              "• Как подключить?"
               "• Не работает конфигурация"
               "• Проблемы с оплатой"
               "📧 <b>Мы всегда готовы помочь!</b>"

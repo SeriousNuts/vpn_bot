@@ -210,8 +210,9 @@ class AdminPanel:
             
             text += (
                 f"{status_emoji} ID: {user.telegram_id}\n"
-                f"   Статус: {user.status}\n"
+                f"   !Статус: {user.status}\n"
                 f"   Подписка: {sub_status}\n"
+                f"   Имя Marzban: {user.marzban_username if user.marzban_username else 'Имя marzban отсутствует'}\n"
                 f"   Зарегистрирован: {user.created_at.strftime('%Y-%m-%d')}\n\n"
             )
             
@@ -281,6 +282,7 @@ class AdminPanel:
                 f"{status_emoji} ID: {user.telegram_id}\n"
                 f"   Статус: {user.status}\n"
                 f"   Подписка: {sub_status}\n"
+                f"   Имя Marzban: {user.marzban_username if user.marzban_username else 'Имя marzban отсутствует'}\n"
                 f"   Зарегистрирован: {user.created_at.strftime('%Y-%m-%d')}\n\n"
             )
             

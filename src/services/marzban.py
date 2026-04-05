@@ -55,21 +55,21 @@ class MarzbanService:
             # Проверяем подключение
             token = await self.token_cache.get_token()
             if token:
-                logger.info("✅ Успешное подключение к Marzban API")
+                logger.info("Успешное подключение к Marzban API")
                 return True
             else:
-                logger.error("❌ Не удалось получить токен Marzban")
+                logger.error("Не удалось получить токен Marzban")
                 return False
                 
         except Exception as e:
-            logger.error(f"❌ Ошибка инициализации Marzban API: {format_error_traceback(e)}")
+            logger.error(f"Ошибка инициализации Marzban API: {format_error_traceback(e)}")
             return False
     
     async def close(self) -> None:
         """Закрытие API клиента"""
         if self.api:
             await self.api.close()
-            logger.info("🔌 Marzban API клиент закрыт")
+            logger.info("Marzban API клиент закрыт")
     
     async def get_token(self) -> Optional[str]:
         """Получение токена из кэша"""
@@ -94,7 +94,7 @@ class MarzbanService:
 
         token = await self.get_token()
         if not token:
-            logger.error("❌ Не удалось получить токен для создания пользователя")
+            logger.error("Не удалось получить токен для создания пользователя")
             return None
         
         try:
@@ -118,19 +118,19 @@ class MarzbanService:
             # Добавляем пользователя в Marzban
             created_user = await self.api.add_user(user=new_user, token=token)
             
-            logger.info(f"✅ Пользователь {username} успешно создан в Marzban")
+            logger.info(f"Пользователь {username} успешно создан в Marzban")
             return created_user
             
         except HTTPStatusError as e:
             if e.response.status_code == 400:
-                logger.error(f"❌ Ошибка валидации при создании пользователя: {e.response.text}")
+                logger.error(f"Ошибка валидации при создании пользователя: {e.response.text}")
             elif e.response.status_code == 409:
-                logger.error(f"❌ Пользователь уже существует: {username}")
+                logger.error(f"Пользователь уже существует: {username}")
             else:
-                logger.error(f"❌ Ошибка HTTP при создании пользователя: {e.response.status_code} - {e.response.text}")
+                logger.error(f"Ошибка HTTP при создании пользователя: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
-            logger.error(f"❌ Ошибка создания пользователя в Marzban: {format_error_traceback(e)}")
+            logger.error(f"Ошибка создания пользователя в Marzban: {format_error_traceback(e)}")
             return None
     
     async def get_user(self, username: str) -> UserResponse | None:
@@ -200,19 +200,19 @@ class MarzbanService:
                 token=token
             )
             
-            logger.info(f"✅ Пользователь {username} успешно изменен")
+            logger.info(f"Пользователь {username} успешно изменен")
             return modified_user
             
         except HTTPStatusError as e:
             if e.response.status_code == 404:
-                logger.error(f"❌ Пользователь не найден для изменения: {username}")
+                logger.error(f"Пользователь не найден для изменения: {username}")
             elif e.response.status_code == 400:
-                logger.error(f"❌ Ошибка валидации при изменении пользователя {username}: {e.response.text}")
+                logger.error(f"Ошибка валидации при изменении пользователя {username}: {e.response.text}")
             else:
-                logger.error(f"❌ Ошибка HTTP при изменении пользователя {username}: {e.response.status_code} - {e.response.text}")
+                logger.error(f"Ошибка HTTP при изменении пользователя {username}: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
-            logger.error(f"❌ Ошибка изменения пользователя {username}: {format_error_traceback(e)}")
+            logger.error(f"Ошибка изменения пользователя {username}: {format_error_traceback(e)}")
             return None
     
     async def remove_user(self, username: str) -> bool:
@@ -234,17 +234,17 @@ class MarzbanService:
         
         try:
             await self.api.remove_user(username=username, token=token)
-            logger.info(f"✅ Пользователь {username} успешно удален")
+            logger.info(f"Пользователь {username} успешно удален")
             return True
             
         except HTTPStatusError as e:
             if e.response.status_code == 404:
-                logger.error(f"❌ Пользователь не найден для удаления: {username}")
+                logger.error(f"Пользователь не найден для удаления: {username}")
             else:
-                logger.error(f"❌ Ошибка HTTP при удалении пользователя {username}: {e.response.status_code} - {e.response.text}")
+                logger.error(f"Ошибка HTTP при удалении пользователя {username}: {e.response.status_code} - {e.response.text}")
             return False
         except Exception as e:
-            logger.error(f"❌ Ошибка удаления пользователя {username}: {format_error_traceback(e)}")
+            logger.error(f"Ошибка удаления пользователя {username}: {format_error_traceback(e)}")
             return False
     
     async def extend_subscription(self, username: str, days: int) -> bool:
@@ -273,7 +273,7 @@ class MarzbanService:
             return result is not None
             
         except Exception as e:
-            logger.error(f"❌ Ошибка продления подписки пользователя {username}: {format_error_traceback(e)}")
+            logger.error(f"Ошибка продления подписки пользователя {username}: {format_error_traceback(e)}")
             return False
     
     async def change_user_status(self, username: str, status: str) -> bool:
@@ -309,12 +309,12 @@ class MarzbanService:
             
         except HTTPStatusError as e:
             if e.response.status_code == 401:
-                logger.error(f"❌ Ошибка авторизации при получении статистики: {e.response.text}")
+                logger.error(f"Ошибка авторизации при получении статистики: {e.response.text}")
             else:
-                logger.error(f"❌ Ошибка HTTP при получении статистики: {e.response.status_code} - {e.response.text}")
+                logger.error(f"Ошибка HTTP при получении статистики: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
-            logger.error(f"❌ Ошибка получения системной статистики: {format_error_traceback(e)}")
+            logger.error(f"Ошибка получения системной статистики: {format_error_traceback(e)}")
             return None
     
     async def get_all_users(self, offset: int = 0, limit: int = 100) -> UsersResponse | None:
@@ -328,7 +328,7 @@ class MarzbanService:
         Returns:
             List с пользователями или None
         """
-        if self.api.client.is_closed:
+        if self.api and self.api.client.is_closed:
             await self.initialize()
 
         token = await self.get_token()
@@ -341,12 +341,12 @@ class MarzbanService:
             
         except HTTPStatusError as e:
             if e.response.status_code == 401:
-                logger.error(f"❌ Ошибка авторизации при получении списка пользователей: {e.response.text}")
+                logger.error(f"Ошибка авторизации при получении списка пользователей: {e.response.text}")
             else:
-                logger.error(f"❌ Ошибка HTTP при получении списка пользователей: {e.response.status_code} - {e.response.text}")
+                logger.error(f"Ошибка HTTP при получении списка пользователей: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
-            logger.error(f"❌ Ошибка получения списка пользователей: {format_error_traceback(e)}")
+            logger.error(f"Ошибка получения списка пользователей: {format_error_traceback(e)}")
             return None
     
     async def get_user_usage(self, username: str, start_date: str, end_date: str) -> Optional[Dict[str, Any]]:
@@ -378,14 +378,14 @@ class MarzbanService:
             
         except HTTPStatusError as e:
             if e.response.status_code == 404:
-                logger.error(f"❌ Пользователь не найден для получения статистики: {username}")
+                logger.error(f"Пользователь не найден для получения статистики: {username}")
             elif e.response.status_code == 400:
-                logger.error(f"❌ Ошибка валидации дат для статистики пользователя {username}: {e.response.text}")
+                logger.error(f"Ошибка валидации дат для статистики пользователя {username}: {e.response.text}")
             else:
-                logger.error(f"❌ Ошибка HTTP при получении статистики пользователя {username}: {e.response.status_code} - {e.response.text}")
+                logger.error(f"Ошибка HTTP при получении статистики пользователя {username}: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
-            logger.error(f"❌ Ошибка получения статистики использования пользователя {username}: {format_error_traceback(e)}")
+            logger.error(f"Ошибка получения статистики использования пользователя {username}: {format_error_traceback(e)}")
             return None
     
     async def reset_user_usage(self, username: str) -> bool:
@@ -407,17 +407,17 @@ class MarzbanService:
         
         try:
             await self.api.reset_user_data_usage(username=username, token=token)
-            logger.info(f"✅ Статистика использования пользователя {username} сброшена")
+            logger.info(f"Статистика использования пользователя {username} сброшена")
             return True
             
         except HTTPStatusError as e:
             if e.response.status_code == 404:
-                logger.error(f"❌ Пользователь не найден для сброса статистики: {username}")
+                logger.error(f"Пользователь не найден для сброса статистики: {username}")
             else:
-                logger.error(f"❌ Ошибка HTTP при сбросе статистики пользователя {username}: {e.response.status_code} - {e.response.text}")
+                logger.error(f"Ошибка HTTP при сбросе статистики пользователя {username}: {e.response.status_code} - {e.response.text}")
             return False
         except Exception as e:
-            logger.error(f"❌ Ошибка сброса статистики пользователя {username}: {format_error_traceback(e)}")
+            logger.error(f"Ошибка сброса статистики пользователя {username}: {format_error_traceback(e)}")
             return False
     
     async def get_user_subscription_info(self, username: str) -> SubscriptionUserResponse | None:
@@ -453,12 +453,12 @@ class MarzbanService:
             
         except HTTPStatusError as e:
             if e.response.status_code == 404:
-                logger.error(f"❌ Подписка пользователя {username} не найдена")
+                logger.error(f"Подписка пользователя {username} не найдена")
             else:
-                logger.error(f"❌ Ошибка HTTP при получении подписки пользователя {username}: {e.response.status_code} - {e.response.text}")
+                logger.error(f"Ошибка HTTP при получении подписки пользователя {username}: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
-            logger.error(f"❌ Ошибка получения информации о подписке пользователя {username}: {format_error_traceback(e)}")
+            logger.error(f"Ошибка получения информации о подписке пользователя {username}: {format_error_traceback(e)}")
             return None
     
     def _get_proxy_config(self, protocol: str) -> ProxySettings:
@@ -494,7 +494,7 @@ class MarzbanService:
             stats = await self.get_system_stats()
             return stats is not None
         except Exception as e:
-            logger.error(f"❌ Ошибка проверки здоровья API: {format_error_traceback(e)}")
+            logger.error(f"Ошибка проверки здоровья API: {format_error_traceback(e)}")
             return False
 
 
