@@ -37,6 +37,7 @@ class MarzbanService:
         self.password = settings.marzban_password
         self.api: Optional[MarzbanAPI] = None
         self.token_cache: Optional[MarzbanTokenCache] = None
+        self.initialize()
     
     async def initialize(self) -> bool:
         """Инициализация API и кэша токенов"""
@@ -70,6 +71,7 @@ class MarzbanService:
         if self.api:
             await self.api.close()
             logger.info("Marzban API клиент закрыт")
+
     
     async def get_token(self) -> Optional[str]:
         """Получение токена из кэша"""

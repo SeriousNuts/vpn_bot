@@ -867,7 +867,6 @@ async def show_connection_guide_callback(callback: CallbackQuery):
             "Для подключения к сервису вам понадобится специальное приложение-клиент. "
             "Выберите вашу платформу ниже и установите приложение:\n\n"
             "<b>🤖 Android</b>\n"
-            "• <a href=\"https://play.google.com/store/apps/details?id=com.happproxy\">Haproxy</a>\n"
             "• <a href=\"https://play.google.com/store/apps/details?id=com.v2raytun.android\">v2RayTun</a>\n"
             "• <a href=\"https://play.google.com/store/apps/details?id=dev.hexasoftware.v2box\">V2Box</a>\n\n"
             "<b>🍎 iOS (iPhone/iPad)</b>\n"
