@@ -30,14 +30,18 @@ class MarzbanService:
     Сервис для управления пользователями Marzban
     Использует официальную библиотеку marzban
     """
-    
+
     def __init__(self):
         self.base_url = settings.marzban_url.rstrip('/')
         self.username = settings.marzban_username
         self.password = settings.marzban_password
-        self.api: Optional[MarzbanAPI] = None
-        self.token_cache: Optional[MarzbanTokenCache] = None
-        self.initialize()
+        self.api: Optional[MarzbanAPI] = MarzbanAPI(base_url=self.base_url)
+        self.token_cache: Optional[MarzbanTokenCache] =  MarzbanTokenCache(
+                client=self.api,
+                username=self.username,
+                password=self.password,
+                token_expire_minutes=1440  # 24 часа
+            )
     
     async def initialize(self) -> bool:
         """Инициализация API и кэша токенов"""
